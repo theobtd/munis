@@ -26,8 +26,8 @@
             background: #ffffff; border-radius: 12px; padding: 24px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1); margin-bottom: 30px;
         }
-        .graph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .graph-header h2 { margin: 0; font-size: 1.2rem; color: #4a5568; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .section-header h2 { margin: 0; font-size: 1.2rem; color: #4a5568; }
         
         select, input[type="time"], input[type="number"], input[type="text"] {
             padding: 8px 16px; border-radius: 8px; border: 1px solid #cbd5e0;
@@ -35,12 +35,10 @@
             outline: none; transition: border-color 0.2s; width: 100%;
             box-sizing: border-box; margin-top: 5px; margin-bottom: 15px;
         }
-        select { cursor: pointer; width: auto; }
+        select { cursor: pointer; width: auto; margin: 0; }
         select:hover, select:focus, input:focus { border-color: #4299e1; }
         
         /* --- Alerts Section & Button --- */
-        .alerts-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .alerts-header h2 { margin: 0; font-size: 1.2rem; color: #4a5568; }
         .btn {
             background-color: #3182ce; color: white; border: none;
             padding: 8px 16px; border-radius: 8px; font-size: 1rem;
@@ -48,18 +46,21 @@
         }
         .btn:hover { background-color: #2b6cb0; }
         
-        /* --- NEW: Alert List Styles --- */
-        #alertsList { display: flex; flex-direction: column; gap: 10px; }
+        /* --- Alert List Styles (Used for both Active and Past) --- */
+        .alerts-list { display: flex; flex-direction: column; gap: 10px; }
         .alert-row {
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; justify-content: space-between; align-items: flex-start;
             padding: 15px; background-color: #f8fafc;
             border: 1px solid #e2e8f0; border-radius: 8px;
             transition: box-shadow 0.2s;
         }
         .alert-row:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .alert-info { display: flex; flex-direction: column; }
+        .alert-info { display: flex; flex-direction: column; width: 100%; }
+        .alert-title-group { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
         .alert-title { font-weight: 600; color: #2d3748; font-size: 1.05rem; }
         .alert-sub { font-size: 0.9rem; color: #718096; margin-top: 4px;}
+        .alert-timestamp { font-size: 0.8rem; color: #a0aec0; margin-top: 8px; font-style: italic; }
+        
         .delete-btn {
             background: none; border: none; color: #e53e3e; font-size: 1.2rem;
             cursor: pointer; padding: 5px; opacity: 0.6; transition: opacity 0.2s;
@@ -70,6 +71,13 @@
             display: flex; align-items: center; justify-content: center;
             color: #a0aec0; font-style: italic;
         }
+
+        /* --- NEW: Badges for Past Alerts --- */
+        .badge {
+            padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;
+        }
+        .badge-rto { background-color: #feebc8; color: #c05621; border: 1px solid #fbd38d; }
+        .badge-platform { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
 
         /* --- Modal Styles --- */
         .modal {
@@ -86,7 +94,7 @@
             font-weight: bold; cursor: pointer; line-height: 1;
         }
         .close-btn:hover { color: #2d3748; }
-        .modal-content h3 { margin-top: 0; color: #2d3748; }
+        .modal-content h3 { margin-top: 0; color: #2d3748; margin-bottom: 20px;}
         .form-group label { font-weight: 600; font-size: 0.9rem; color: #4a5568; }
     </style>
 </head>
@@ -98,7 +106,7 @@
         </header>
 
         <div class="card">
-            <div class="graph-header">
+            <div class="section-header">
                 <h2>Net Load Profile (Duck Curve)</h2>
                 <select id="feederToggle">
                     <option value="combined">Combined</option>
@@ -111,13 +119,26 @@
         </div>
 
         <div class="card">
-            <div class="alerts-header">
+            <div class="section-header">
                 <h2>My Alerts</h2>
                 <button class="btn" id="openModalBtn">+ Add Alert</button>
             </div>
-            <div id="alertsList">
+            <div id="alertsList" class="alerts-list">
                 <div class="alerts-placeholder">Loading alerts...</div>
             </div>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <h2>Past Alerts</h2>
+                <select id="pastAlertsToggle">
+                    <option value="global">Global</option>
+                    <option value="rto">RTO</option>
+                    <option value="platform">Platform</option>
+                </select>
+            </div>
+            <div id="pastAlertsList" class="alerts-list">
+                </div>
         </div>
     </div>
 
@@ -211,7 +232,7 @@
             duckChart.update();
         });
 
-        // --- 3. MODAL & ALERT CREATION LOGIC ---
+        // --- 3. MODAL & FIRESTORE LOGIC ---
         const modal = document.getElementById('alertModal');
         const openModalBtn = document.getElementById('openModalBtn');
         const closeModalBtn = document.getElementById('closeModalBtn');
@@ -239,9 +260,7 @@
             const emails = emailsRaw.split(',').map(email => email.trim()).filter(email => email !== "");
 
             const alertData = {
-                feeder: feeder,
-                type: type,
-                emails: emails,
+                feeder: feeder, type: type, emails: emails,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
@@ -263,43 +282,25 @@
             .catch((error) => { console.error("Error adding document: ", error); });
         });
 
-        // --- 4. NEW: FETCH & DISPLAY ALERTS ---
+        // Fetch My Alerts
         const alertsList = document.getElementById('alertsList');
-
-        // Listen for real-time updates in the 'alerts' collection
         db.collection("alerts").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
-            alertsList.innerHTML = ''; // Clear current list
-
+            alertsList.innerHTML = ''; 
             if (snapshot.empty) {
                 alertsList.innerHTML = `<div class="alerts-placeholder">No alerts created yet. Click "+ Add Alert" to begin.</div>`;
                 return;
             }
-
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                
-                // Format the title (e.g., "Feeder 1" or "Global")
                 const feederName = data.feeder.charAt(0).toUpperCase() + data.feeder.slice(1).replace(/(\d+)/g, ' $1');
-                
-                // Format the condition text
-                let conditionText = '';
-                if (data.type === 'daily_set_time') {
-                    conditionText = `Triggers daily at ${data.timeOfDay}`;
-                } else {
-                    conditionText = `Triggers when load exceeds ${data.thresholdMW} MW`;
-                }
-
-                // Format the emails
-                const emailList = data.emails.join(', ');
-
-                // Build the HTML for the row
+                let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay}` : `Triggers when load exceeds ${data.thresholdMW} MW`;
                 const row = document.createElement('div');
                 row.className = 'alert-row';
                 row.innerHTML = `
                     <div class="alert-info">
-                        <span class="alert-title">${feederName} Alert</span>
+                        <div class="alert-title-group"><span class="alert-title">${feederName} Alert</span></div>
                         <span class="alert-sub"><strong>Condition:</strong> ${conditionText}</span>
-                        <span class="alert-sub"><strong>Sends to:</strong> ${emailList}</span>
+                        <span class="alert-sub"><strong>Sends to:</strong> ${data.emails.join(', ')}</span>
                     </div>
                     <button class="delete-btn" onclick="deleteAlert('${doc.id}')" title="Delete Alert">🗑️</button>
                 `;
@@ -307,14 +308,82 @@
             });
         });
 
-        // Function to handle deleting an alert
         function deleteAlert(docId) {
             if(confirm("Are you sure you want to delete this alert?")) {
-                db.collection("alerts").doc(docId).delete().catch((error) => {
-                    console.error("Error removing document: ", error);
-                });
+                db.collection("alerts").doc(docId).delete().catch((error) => console.error("Error: ", error));
             }
         }
+
+        // --- 4. PAST ALERTS LOGIC ---
+        // Hardcoded data with explicit Dates for sorting and realistic context
+        const pastAlertsData = [
+            // RTO Alerts (7 total)
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-06-04T09:00:00'), message: "Coincident Peak will happen between 2pm and 7pm tomorrow June 5, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-06-01T10:15:00'), message: "Coincident Peak will happen between 3pm and 6pm tomorrow June 2, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-30T08:30:00'), message: "Coincident Peak will happen between 1pm and 5pm tomorrow May 31, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-26T11:00:00'), message: "Coincident Peak will happen between 4pm and 8pm tomorrow May 27, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-20T09:45:00'), message: "Coincident Peak will happen between 2pm and 7pm tomorrow May 21, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-15T10:00:00'), message: "Coincident Peak will happen between 3pm and 7pm tomorrow May 16, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-10T08:00:00'), message: "Coincident Peak will happen between 1pm and 6pm tomorrow May 11, 2026." },
+            
+            // Platform Alerts (3 total)
+            { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-06-05T11:00:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 6:00-6:30pm window today June 5, 2026." },
+            { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-06-02T12:30:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 5:30-6:00pm window today June 2, 2026." },
+            { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-05-28T14:00:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 6:00-6:30pm window today May 28, 2026." }
+        ];
+
+        const pastAlertsList = document.getElementById('pastAlertsList');
+        const pastAlertsToggle = document.getElementById('pastAlertsToggle');
+
+        function renderPastAlerts(filterType) {
+            pastAlertsList.innerHTML = ''; // Clear container
+            
+            // Filter
+            let filteredAlerts = pastAlertsData;
+            if (filterType !== 'global') {
+                filteredAlerts = pastAlertsData.filter(alert => alert.type === filterType);
+            }
+
+            // Sort chronologically (descending - newest first)
+            filteredAlerts.sort((a, b) => b.timestamp - a.timestamp);
+
+            if (filteredAlerts.length === 0) {
+                pastAlertsList.innerHTML = `<div class="alerts-placeholder">No past alerts found.</div>`;
+                return;
+            }
+
+            // Render
+            filteredAlerts.forEach(alert => {
+                const row = document.createElement('div');
+                row.className = 'alert-row';
+                
+                // Format timestamp for display (e.g., "Jun 5, 2026, 11:00 AM")
+                const timeString = alert.timestamp.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+                
+                const badgeClass = alert.type === 'rto' ? 'badge-rto' : 'badge-platform';
+                const badgeLabel = alert.type === 'rto' ? 'RTO' : 'Platform';
+
+                row.innerHTML = `
+                    <div class="alert-info">
+                        <div class="alert-title-group">
+                            <span class="badge ${badgeClass}">${badgeLabel}</span>
+                            <span class="alert-title">${alert.source}</span>
+                        </div>
+                        <span class="alert-sub">${alert.message}</span>
+                        <span class="alert-timestamp">Received: ${timeString}</span>
+                    </div>
+                `;
+                pastAlertsList.appendChild(row);
+            });
+        }
+
+        // Listen for dropdown changes
+        pastAlertsToggle.addEventListener('change', (e) => {
+            renderPastAlerts(e.target.value);
+        });
+
+        // Initial render
+        renderPastAlerts('global');
     </script>
 </body>
 </html>
