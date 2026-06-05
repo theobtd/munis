@@ -397,10 +397,16 @@
 
             if (type === 'daily_set_time') {
                 alertData.timeOfDay = document.getElementById('alertTime').value;
-                alertData.thresholdMW = firebase.firestore.FieldValue.delete(); // Clear out parameter if switching types
+                // ONLY use delete() if updating an existing alert
+                if (editingAlertId) {
+                    alertData.thresholdMW = firebase.firestore.FieldValue.delete();
+                }
             } else {
                 alertData.thresholdMW = parseFloat(document.getElementById('alertThreshold').value);
-                alertData.timeOfDay = firebase.firestore.FieldValue.delete(); // Clear out parameter if switching types
+                // ONLY use delete() if updating an existing alert
+                if (editingAlertId) {
+                    alertData.timeOfDay = firebase.firestore.FieldValue.delete(); 
+                }
             }
 
             if (emails.length === 0) { alert("Please enter at least one email address."); return; }
