@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Town of Harvey, LA</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Base Styles & Typography */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        /* Container to center everything */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Top Title */
+        header {
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        h1 {
+            margin: 0;
+            color: #2d3748;
+            font-size: 2.2rem;
+        }
+
+        /* Card Style for Graph and Alerts */
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        /* Graph Header (Title & Toggle) */
+        .graph-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .graph-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #4a5568;
+        }
+        
+        /* The Toggle/Dropdown */
+        select {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e0;
+            background-color: #f8fafc;
+            font-size: 1rem;
+            color: #2d3748;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        select:hover, select:focus {
+            border-color: #4299e1;
+        }
+
+        /* Alerts Section */
+        .alerts-card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #4a5568;
+            margin-bottom: 15px;
+        }
+        .alerts-placeholder {
+            min-height: 150px;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a0aec0;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Town of Harvey, LA</h1>
+        </header>
+
+        <div class="card">
+            <div class="graph-header">
+                <h2>Net Load Profile (Duck Curve)</h2>
+                <select id="feederToggle">
+                    <option value="combined">Combined</option>
+                    <option value="feeder1">Feeder 1 (Residential)</option>
+                    <option value="feeder2">Feeder 2 (Commercial)</option>
+                    <option value="feeder3">Feeder 3 (Mixed)</option>
+                </select>
+            </div>
+            <canvas id="duckChart" height="100"></canvas>
+        </div>
+
+        <div class="card alerts-card">
+            <h2>My Alerts</h2>
+            <div class="alerts-placeholder">
+                Alerts will appear here...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Setup the Time Labels (4pm yesterday to 4pm today)
+        const labels = [
+            '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', 
+            '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', 
+            '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'
+        ];
+
+        // 2. Mock Data for a town of ~4,000 people (~1500 homes)
+        // A peak load of ~6 MW is realistic. BTM solar causes the midday "belly".
+        const dataSets = {
+            combined: [4.2, 4.8, 5.5, 5.9, 5.8, 5.2, 4.5, 3.8, 3.2, 2.8, 2.5, 2.4, 2.6, 3.0, 3.8, 4.2, 3.5, 2.5, 1.5, 1.0, 0.8, 1.2, 2.0, 3.2, 4.5],
+            // Deep belly for residential high-solar
+            feeder1: [1.8, 2.2, 2.8, 3.0, 2.8, 2.4, 1.9, 1.5, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.6, 1.8, 1.2, 0.5, 0.0, -0.2, -0.2, 0.2, 0.8, 1.5, 2.0],
+            // Flatter curve for commercial
+            feeder2: [1.4, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.8, 0.8, 0.8, 0.8, 0.9, 1.0, 1.3, 1.5, 1.5, 1.4, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.4],
+            // Mixed use
+            feeder3: [1.0, 1.2, 1.4, 1.7, 1.9, 1.8, 1.7, 1.5, 1.2, 1.0, 0.8, 0.7, 0.7, 0.8, 0.9, 0.9, 0.8, 0.6, 0.3, 0.2, 0.1, 0.1, 0.2, 0.5, 1.1]
+        };
+
+        // 3. Initialize the Chart
+        const ctx = document.getElementById('duckChart').getContext('2d');
+        const duckChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Net Load (MW)',
+                    data: dataSets.combined,
+                    borderColor: '#3182ce', // A nice modern blue
+                    backgroundColor: 'rgba(49, 130, 206, 0.1)', // Light blue fill
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4, // This creates the smooth, curved "duck" shape
+                    pointRadius: 2,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + ' MW';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Megawatts (MW)' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Time of Day' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // 4. Handle the Toggle Switch
+        const toggle = document.getElementById('feederToggle');
+        toggle.addEventListener('change', function() {
+            const selectedFeeder = this.value;
+            // Update the chart data
+            duckChart.data.datasets[0].data = dataSets[selectedFeeder];
+            // Animate the transition
+            duckChart.update();
+        });
+    </script>
+</body>
+</html>
