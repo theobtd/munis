@@ -151,6 +151,11 @@
                 <label>Alert sent to (comma separated emails)</label>
                 <input type="text" id="alertEmails" placeholder="admin@harvey.la, tech@harvey.la">
             </div>
+
+            <div class="form-group">
+                <label>Alert sent to (comma separated phone numbers)</label>
+                <input type="text" id="alertPhones" placeholder="555-0100, 555-0101">
+            </div>
             
             <button class="btn" id="confirmAlertBtn" style="width: 100%; margin-top: 10px;">Confirm</button>
         </div>
@@ -352,6 +357,10 @@
             document.getElementById('alertTime').value = '';
             document.getElementById('alertThreshold').value = '';
             document.getElementById('alertEmails').value = '';
+            
+            // ADD THIS LINE:
+            document.getElementById('alertPhones').value = ''; 
+            
             timeGroup.style.display = 'block';
             thresholdGroup.style.display = 'none';
         }
@@ -375,12 +384,15 @@
             const type = document.getElementById('alertType').value;
             const emailsRaw = document.getElementById('alertEmails').value;
             const emails = emailsRaw.split(',').map(email => email.trim()).filter(email => email !== "");
+            const phonesRaw = document.getElementById('alertPhones').value;
+            const phones = phonesRaw.split(',').map(phone => phone.trim()).filter(phone => phone !== "");
 
             const alertData = {
                 name: name,
                 feeder: feeder, 
                 type: type, 
-                emails: emails
+                emails: emails,
+                phones: phones
             };
 
             if (type === 'daily_set_time') {
@@ -429,6 +441,7 @@
                 const titleToDisplay = data.name ? data.name : `${cleanFeederName} Alert`;
                 
                 let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay}` : `Triggers when load exceeds ${data.thresholdMW} MW`;
+                let phonesText = data.phones && data.phones.length > 0 ? data.phones.join(', ') : 'None';
                 const row = document.createElement('div');
                 row.className = 'alert-row';
                 row.innerHTML = `
@@ -436,7 +449,8 @@
                         <div class="alert-title-group"><span class="alert-title">${titleToDisplay}</span></div>
                         <span class="alert-sub"><strong>Feeder Area:</strong> ${cleanFeederName}</span>
                         <span class="alert-sub"><strong>Condition:</strong> ${conditionText}</span>
-                        <span class="alert-sub"><strong>Sends to:</strong> ${data.emails.join(', ')}</span>
+                        <span class="alert-sub"><strong>Emails to:</strong> ${data.emails.join(', ')}</span>
+                        <span class="alert-sub"><strong>Texts to:</strong> ${phonesText}</span> 
                     </div>
                     <div class="alert-actions">
                         <button class="edit-btn" onclick="openEditModal('${doc.id}')" title="Edit Alert">✏️</button>
@@ -474,6 +488,7 @@
                     }
                     
                     document.getElementById('alertEmails').value = data.emails ? data.emails.join(', ') : '';
+                    document.getElementById('alertPhones').value = data.phones ? data.phones.join(', ') : '';
                     modal.style.display = "flex";
                 }
             }).catch((error) => console.error("Error loading alert data: ", error));
