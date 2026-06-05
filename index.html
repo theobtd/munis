@@ -174,7 +174,9 @@
 
         // --- 2. ADVANCED CHART.JS SETUP ---
         const timeLabels15Min = [];
-        let h = 16, m = 0;
+        
+        // Start the day at Midnight (00:00) so the whole day is visible
+        let h = 0, m = 0;
         for (let i = 0; i < 97; i++) {
             timeLabels15Min.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
             m += 15;
@@ -194,15 +196,21 @@
             return res;
         }
 
+        // Helper to rotate your original data so the dip is at Midday and Peak is at 7pm
+        function rotateArray(arr, shifts) {
+            return arr.slice(shifts).concat(arr.slice(0, shifts));
+        }
+
+        // We shift the arrays left by 8 hours to align the duck curve properly with a midnight start
         const baseData = {
-            combined: [4.2, 4.8, 5.5, 5.9, 5.8, 5.2, 4.5, 3.8, 3.2, 2.8, 2.5, 2.4, 2.6, 3.0, 3.8, 4.2, 3.5, 2.5, 1.5, 1.0, 0.8, 1.2, 2.0, 3.2, 4.5],
-            combinedHist: [4.0, 4.5, 5.2, 5.6, 5.5, 5.0, 4.3, 3.7, 3.3, 3.0, 2.8, 2.8, 2.9, 3.3, 3.9, 4.3, 3.8, 3.0, 2.3, 1.8, 1.6, 1.9, 2.6, 3.3, 4.3],
-            feeder1: [1.8, 2.2, 2.8, 3.0, 2.8, 2.4, 1.9, 1.5, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.6, 1.8, 1.2, 0.5, 0.0, -0.2, -0.2, 0.2, 0.8, 1.5, 2.0],
-            feeder1Hist: [1.6, 2.0, 2.5, 2.8, 2.6, 2.3, 1.9, 1.5, 1.3, 1.2, 1.1, 1.1, 1.2, 1.4, 1.7, 1.9, 1.5, 0.9, 0.5, 0.3, 0.3, 0.6, 1.1, 1.6, 1.8],
-            feeder2: [1.4, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.8, 0.8, 0.8, 0.8, 0.9, 1.0, 1.3, 1.5, 1.5, 1.4, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.4],
-            feeder2Hist: [1.4, 1.4, 1.3, 1.2, 1.1, 1.0, 1.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.0, 1.1, 1.3, 1.5, 1.5, 1.4, 1.3, 1.2, 1.1, 1.1, 1.2, 1.3, 1.4],
-            feeder3: [1.0, 1.2, 1.4, 1.7, 1.9, 1.8, 1.7, 1.5, 1.2, 1.0, 0.8, 0.7, 0.7, 0.8, 0.9, 0.9, 0.8, 0.6, 0.3, 0.2, 0.1, 0.1, 0.2, 0.5, 1.1],
-            feeder3Hist: [1.0, 1.1, 1.4, 1.6, 1.8, 1.7, 1.4, 1.3, 1.1, 0.9, 0.8, 0.8, 0.7, 0.8, 0.9, 0.9, 0.8, 0.7, 0.5, 0.4, 0.3, 0.3, 0.4, 0.6, 1.0]
+            combined: rotateArray([4.2, 4.8, 5.5, 5.9, 5.8, 5.2, 4.5, 3.8, 3.2, 2.8, 2.5, 2.4, 2.6, 3.0, 3.8, 4.2, 3.5, 2.5, 1.5, 1.0, 0.8, 1.2, 2.0, 3.2, 4.5], 8),
+            combinedHist: rotateArray([4.0, 4.5, 5.2, 5.6, 5.5, 5.0, 4.3, 3.7, 3.3, 3.0, 2.8, 2.8, 2.9, 3.3, 3.9, 4.3, 3.8, 3.0, 2.3, 1.8, 1.6, 1.9, 2.6, 3.3, 4.3], 8),
+            feeder1: rotateArray([1.8, 2.2, 2.8, 3.0, 2.8, 2.4, 1.9, 1.5, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.6, 1.8, 1.2, 0.5, 0.0, -0.2, -0.2, 0.2, 0.8, 1.5, 2.0], 8),
+            feeder1Hist: rotateArray([1.6, 2.0, 2.5, 2.8, 2.6, 2.3, 1.9, 1.5, 1.3, 1.2, 1.1, 1.1, 1.2, 1.4, 1.7, 1.9, 1.5, 0.9, 0.5, 0.3, 0.3, 0.6, 1.1, 1.6, 1.8], 8),
+            feeder2: rotateArray([1.4, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.8, 0.8, 0.8, 0.8, 0.9, 1.0, 1.3, 1.5, 1.5, 1.4, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.4], 8),
+            feeder2Hist: rotateArray([1.4, 1.4, 1.3, 1.2, 1.1, 1.0, 1.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.0, 1.1, 1.3, 1.5, 1.5, 1.4, 1.3, 1.2, 1.1, 1.1, 1.2, 1.3, 1.4], 8),
+            feeder3: rotateArray([1.0, 1.2, 1.4, 1.7, 1.9, 1.8, 1.7, 1.5, 1.2, 1.0, 0.8, 0.7, 0.7, 0.8, 0.9, 0.9, 0.8, 0.6, 0.3, 0.2, 0.1, 0.1, 0.2, 0.5, 1.1], 8),
+            feeder3Hist: rotateArray([1.0, 1.1, 1.4, 1.6, 1.8, 1.7, 1.4, 1.3, 1.1, 0.9, 0.8, 0.8, 0.7, 0.8, 0.9, 0.9, 0.8, 0.7, 0.5, 0.4, 0.3, 0.3, 0.4, 0.6, 1.0], 8)
         };
 
         const smoothData = {};
@@ -210,35 +218,46 @@
             smoothData[key] = smooth15Min(arr);
         }
 
+        // Setup Current Time Logic
+        const currentTimeString = '11:15'; // Closest 15-min interval to 11:17 for logic
+        const currentTimeIndex = timeLabels15Min.indexOf(currentTimeString);
+
+        // Reusable segment styling: Solid before current time, dashed & un-filled after (Forecast)
+        const forecastSegment = {
+            borderDash: ctx => ctx.p0DataIndex >= currentTimeIndex ? [5, 5] : undefined,
+            backgroundColor: ctx => ctx.p0DataIndex >= currentTimeIndex ? 'transparent' : undefined
+        };
+
+        // Shifted Ramp-Up windows to the future (between 5:30 PM and 7:15 PM)
         const views = {
             combined: {
-                rampWindow: { min: '15:00', max: '15:30' },
+                rampWindow: { min: '17:45', max: '18:45' },
                 datasets: [
-                    { label: 'Current Load (Combined)', data: smoothData.combined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, order: 1 },
+                    { label: 'Current Load (Combined)', data: smoothData.combined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, order: 1, segment: forecastSegment },
                     { label: 'Historical Avg (Combined)', data: smoothData.combinedHist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10, order: 2 },
-                    { label: 'Feeder 1', data: smoothData.feeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 3 },
-                    { label: 'Feeder 2', data: smoothData.feeder2, borderColor: '#38a169', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 4 },
-                    { label: 'Feeder 3', data: smoothData.feeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 5 }
+                    { label: 'Feeder 1', data: smoothData.feeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 3, segment: forecastSegment },
+                    { label: 'Feeder 2', data: smoothData.feeder2, borderColor: '#38a169', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 4, segment: forecastSegment },
+                    { label: 'Feeder 3', data: smoothData.feeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 5, segment: forecastSegment }
                 ]
             },
             feeder1: {
-                rampWindow: { min: '15:15', max: '15:45' },
+                rampWindow: { min: '18:00', max: '19:00' },
                 datasets: [
-                    { label: 'Feeder 1 (Current)', data: smoothData.feeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10 },
+                    { label: 'Feeder 1 (Current)', data: smoothData.feeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, segment: forecastSegment },
                     { label: 'Historical Avg', data: smoothData.feeder1Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
                 ]
             },
             feeder2: {
-                rampWindow: { min: '14:30', max: '15:00' },
+                rampWindow: { min: '17:30', max: '18:30' },
                 datasets: [
-                    { label: 'Feeder 2 (Current)', data: smoothData.feeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10 },
+                    { label: 'Feeder 2 (Current)', data: smoothData.feeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, segment: forecastSegment },
                     { label: 'Historical Avg', data: smoothData.feeder2Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
                 ]
             },
             feeder3: {
-                rampWindow: { min: '14:45', max: '15:15' },
+                rampWindow: { min: '18:15', max: '19:15' },
                 datasets: [
-                    { label: 'Feeder 3 (Current)', data: smoothData.feeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10 },
+                    { label: 'Feeder 3 (Current)', data: smoothData.feeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, segment: forecastSegment },
                     { label: 'Historical Avg', data: smoothData.feeder3Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
                 ]
             }
@@ -256,9 +275,30 @@
                     tooltip: { callbacks: { label: function(c) { return c.dataset.label + ': ' + c.parsed.y.toFixed(2) + ' MW'; } } },
                     annotation: {
                         annotations: {
+                            currentTimeLine: {
+                                type: 'line',
+                                xMin: currentTimeString,
+                                xMax: currentTimeString,
+                                borderColor: '#718096',
+                                borderWidth: 2,
+                                borderDash: [3, 3],
+                                label: {
+                                    display: true,
+                                    content: 'Current Time (11:17 AM)',
+                                    position: 'start',
+                                    yAdjust: 10,
+                                    backgroundColor: 'rgba(113, 128, 150, 0.8)',
+                                    color: 'white',
+                                    font: { size: 10, weight: 'bold' }
+                                }
+                            },
                             rampUpWindow: {
-                                type: 'box', xMin: views.combined.rampWindow.min, xMax: views.combined.rampWindow.max,
-                                backgroundColor: 'rgba(229, 62, 62, 0.15)', borderWidth: 1, borderColor: 'rgba(229, 62, 62, 0.4)',
+                                type: 'box', 
+                                xMin: views.combined.rampWindow.min, 
+                                xMax: views.combined.rampWindow.max,
+                                backgroundColor: 'rgba(229, 62, 62, 0.15)', 
+                                borderWidth: 1, 
+                                borderColor: 'rgba(229, 62, 62, 0.4)',
                                 label: { display: true, content: 'Max Ramp-Up', position: 'start', color: '#c53030', backgroundColor: 'rgba(255,255,255,0.8)', font: { size: 10 } }
                             }
                         }
