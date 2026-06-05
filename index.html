@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Town of Harvey, LA</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+
     <style>
-        /* Base Styles & Typography */
+        /* --- Existing Base Styles --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f4f7f6;
@@ -15,27 +20,17 @@
             padding: 0;
             line-height: 1.6;
         }
-
-        /* Container to center everything */
         .container {
             max-width: 1000px;
             margin: 0 auto;
             padding: 20px;
         }
-
-        /* Top Title */
         header {
             margin-bottom: 30px;
             padding-bottom: 10px;
             border-bottom: 2px solid #e2e8f0;
         }
-        h1 {
-            margin: 0;
-            color: #2d3748;
-            font-size: 2.2rem;
-        }
-
-        /* Card Style for Graph and Alerts */
+        h1 { margin: 0; color: #2d3748; font-size: 2.2rem; }
         .card {
             background: #ffffff;
             border-radius: 12px;
@@ -43,43 +38,46 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
         }
-
-        /* Graph Header (Title & Toggle) */
         .graph-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
         }
-        .graph-header h2 {
-            margin: 0;
-            font-size: 1.2rem;
-            color: #4a5568;
-        }
-        
-        /* The Toggle/Dropdown */
-        select {
+        .graph-header h2 { margin: 0; font-size: 1.2rem; color: #4a5568; }
+        select, input[type="time"], input[type="number"], input[type="text"] {
             padding: 8px 16px;
             border-radius: 8px;
             border: 1px solid #cbd5e0;
             background-color: #f8fafc;
             font-size: 1rem;
             color: #2d3748;
-            cursor: pointer;
             outline: none;
             transition: border-color 0.2s;
-        }
-        select:hover, select:focus {
-            border-color: #4299e1;
-        }
-
-        /* Alerts Section */
-        .alerts-card h2 {
-            margin-top: 0;
-            font-size: 1.2rem;
-            color: #4a5568;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 5px;
             margin-bottom: 15px;
         }
+        select { cursor: pointer; width: auto; }
+        select:hover, select:focus, input:focus { border-color: #4299e1; }
+        
+        /* --- Alerts Section & Button --- */
+        .alerts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .alerts-header h2 { margin: 0; font-size: 1.2rem; color: #4a5568; }
+        .btn {
+            background-color: #3182ce;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn:hover { background-color: #2b6cb0; }
         .alerts-placeholder {
             min-height: 150px;
             border: 2px dashed #e2e8f0;
@@ -90,6 +88,36 @@
             color: #a0aec0;
             font-style: italic;
         }
+
+        /* --- Modal Styles --- */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; 
+            z-index: 1000; 
+            left: 0; top: 0; width: 100%; height: 100%; 
+            background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border-radius: 12px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .close-btn {
+            color: #a0aec0;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .close-btn:hover { color: #2d3748; }
+        .modal-content h3 { margin-top: 0; color: #2d3748; }
+        .form-group label { font-weight: 600; font-size: 0.9rem; color: #4a5568; }
     </style>
 </head>
 <body>
@@ -112,35 +140,82 @@
             <canvas id="duckChart" height="100"></canvas>
         </div>
 
-        <div class="card alerts-card">
-            <h2>My Alerts</h2>
+        <div class="card">
+            <div class="alerts-header">
+                <h2>My Alerts</h2>
+                <button class="btn" id="openModalBtn">+ Add Alert</button>
+            </div>
             <div class="alerts-placeholder">
                 Alerts will appear here...
             </div>
         </div>
     </div>
 
-    <script>
-        // 1. Setup the Time Labels (4pm yesterday to 4pm today)
-        const labels = [
-            '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', 
-            '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', 
-            '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'
-        ];
+    <div id="alertModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModalBtn">&times;</span>
+            <h3>Create New Alert</h3>
+            
+            <div class="form-group">
+                <label>Feeder</label>
+                <select id="alertFeeder" style="width: 100%;">
+                    <option value="global">Global</option>
+                    <option value="feeder1">Feeder 1</option>
+                    <option value="feeder2">Feeder 2</option>
+                    <option value="feeder3">Feeder 3</option>
+                </select>
+            </div>
 
-        // 2. Mock Data for a town of ~4,000 people (~1500 homes)
-        // A peak load of ~6 MW is realistic. BTM solar causes the midday "belly".
+            <div class="form-group">
+                <label>Type</label>
+                <select id="alertType" style="width: 100%;">
+                    <option value="daily_set_time">Daily set time</option>
+                    <option value="trigger">Trigger</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="timeGroup">
+                <label>Time of day</label>
+                <input type="time" id="alertTime">
+            </div>
+
+            <div class="form-group" id="thresholdGroup" style="display: none;">
+                <label>Above MW threshold:</label>
+                <input type="number" id="alertThreshold" step="0.1" placeholder="e.g. 5.5">
+            </div>
+
+            <div class="form-group">
+                <label>Alert sent to (comma separated emails)</label>
+                <input type="text" id="alertEmails" placeholder="admin@harvey.la, tech@harvey.la">
+            </div>
+
+            <button class="btn" id="confirmAlertBtn" style="width: 100%; margin-top: 10px;">Confirm</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. FIREBASE SETUP ---
+        // IMPORTANT: You need to insert your actual 'apiKey' below from your Firebase Console.
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE", // <-- ADD YOUR API KEY HERE
+            authDomain: "munis-c97ac.firebaseapp.com",
+            projectId: "munis-c97ac",
+            storageBucket: "munis-c97ac.appspot.com",
+            messagingSenderId: "146364565400",
+            appId: "1:146364565400:web:c2640c0b98fb78db6e4ded"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- 2. CHART.JS SETUP (Unchanged) ---
+        const labels = ['16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
         const dataSets = {
             combined: [4.2, 4.8, 5.5, 5.9, 5.8, 5.2, 4.5, 3.8, 3.2, 2.8, 2.5, 2.4, 2.6, 3.0, 3.8, 4.2, 3.5, 2.5, 1.5, 1.0, 0.8, 1.2, 2.0, 3.2, 4.5],
-            // Deep belly for residential high-solar
             feeder1: [1.8, 2.2, 2.8, 3.0, 2.8, 2.4, 1.9, 1.5, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.6, 1.8, 1.2, 0.5, 0.0, -0.2, -0.2, 0.2, 0.8, 1.5, 2.0],
-            // Flatter curve for commercial
             feeder2: [1.4, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.8, 0.8, 0.8, 0.8, 0.9, 1.0, 1.3, 1.5, 1.5, 1.4, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.4],
-            // Mixed use
             feeder3: [1.0, 1.2, 1.4, 1.7, 1.9, 1.8, 1.7, 1.5, 1.2, 1.0, 0.8, 0.7, 0.7, 0.8, 0.9, 0.9, 0.8, 0.6, 0.3, 0.2, 0.1, 0.1, 0.2, 0.5, 1.1]
         };
 
-        // 3. Initialize the Chart
         const ctx = document.getElementById('duckChart').getContext('2d');
         const duckChart = new Chart(ctx, {
             type: 'line',
@@ -149,48 +224,94 @@
                 datasets: [{
                     label: 'Net Load (MW)',
                     data: dataSets.combined,
-                    borderColor: '#3182ce', // A nice modern blue
-                    backgroundColor: 'rgba(49, 130, 206, 0.1)', // Light blue fill
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4, // This creates the smooth, curved "duck" shape
-                    pointRadius: 2,
-                    pointHoverRadius: 6
+                    borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', borderWidth: 3, fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 6
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.parsed.y + ' MW';
-                            }
-                        }
-                    }
-                },
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { return c.parsed.y + ' MW'; } } } },
                 scales: {
-                    y: {
-                        beginAtZero: false,
-                        title: { display: true, text: 'Megawatts (MW)' }
-                    },
-                    x: {
-                        title: { display: true, text: 'Time of Day' },
-                        grid: { display: false }
-                    }
+                    y: { title: { display: true, text: 'Megawatts (MW)' } },
+                    x: { title: { display: true, text: 'Time of Day' }, grid: { display: false } }
                 }
             }
         });
 
-        // 4. Handle the Toggle Switch
-        const toggle = document.getElementById('feederToggle');
-        toggle.addEventListener('change', function() {
-            const selectedFeeder = this.value;
-            // Update the chart data
-            duckChart.data.datasets[0].data = dataSets[selectedFeeder];
-            // Animate the transition
+        document.getElementById('feederToggle').addEventListener('change', function() {
+            duckChart.data.datasets[0].data = dataSets[this.value];
             duckChart.update();
+        });
+
+        // --- 3. MODAL & ALERT LOGIC ---
+        const modal = document.getElementById('alertModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const alertTypeSelect = document.getElementById('alertType');
+        const timeGroup = document.getElementById('timeGroup');
+        const thresholdGroup = document.getElementById('thresholdGroup');
+        const confirmAlertBtn = document.getElementById('confirmAlertBtn');
+
+        // Open/Close Modal
+        openModalBtn.onclick = () => { modal.style.display = "flex"; }
+        closeModalBtn.onclick = () => { modal.style.display = "none"; }
+        window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; }
+
+        // Toggle logic for 'Type' dropdown
+        alertTypeSelect.addEventListener('change', function() {
+            if (this.value === 'daily_set_time') {
+                timeGroup.style.display = 'block';
+                thresholdGroup.style.display = 'none';
+            } else {
+                timeGroup.style.display = 'none';
+                thresholdGroup.style.display = 'block';
+            }
+        });
+
+        // Save to Firestore
+        confirmAlertBtn.addEventListener('click', () => {
+            // 1. Gather values
+            const feeder = document.getElementById('alertFeeder').value;
+            const type = document.getElementById('alertType').value;
+            const emailsRaw = document.getElementById('alertEmails').value;
+            
+            // Clean up emails into an array (trim whitespace)
+            const emails = emailsRaw.split(',').map(email => email.trim()).filter(email => email !== "");
+
+            // Build the data payload
+            const alertData = {
+                feeder: feeder,
+                type: type,
+                emails: emails,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (type === 'daily_set_time') {
+                alertData.timeOfDay = document.getElementById('alertTime').value;
+            } else {
+                alertData.thresholdMW = parseFloat(document.getElementById('alertThreshold').value);
+            }
+
+            // 2. Validate basic fields
+            if (emails.length === 0) {
+                alert("Please enter at least one email address.");
+                return;
+            }
+
+            // 3. Push to Firestore collection called 'alerts'
+            db.collection("alerts").add(alertData)
+            .then((docRef) => {
+                alert("Alert successfully created!");
+                modal.style.display = "none";
+                
+                // Clear the form fields for next time
+                document.getElementById('alertTime').value = '';
+                document.getElementById('alertThreshold').value = '';
+                document.getElementById('alertEmails').value = '';
+            })
+            .catch((error) => {
+                console.error("Error adding document: ", error);
+                alert("Error saving alert. Please check console.");
+            });
         });
     </script>
 </body>
