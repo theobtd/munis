@@ -68,6 +68,38 @@
         .close-btn:hover { color: #2d3748; }
         .modal-content h3 { margin-top: 0; color: #2d3748; margin-bottom: 20px;}
         .form-group label { font-weight: 600; font-size: 0.9rem; color: #4a5568; }
+
+        #loadingOverlay {
+            display: none; 
+            position: fixed; 
+            z-index: 2000; /* Higher than the modal (1000) */
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(255, 255, 255, 0.8); 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column;
+        }
+        .spinner {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #3182ce;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #2d3748;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
     </style>
 </head>
 <body>
@@ -411,23 +443,38 @@
 
             if (emails.length === 0) { alert("Please enter at least one email address."); return; }
 
+            // Get reference to the loader
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            // Show the loader and freeze the screen
+            loadingOverlay.style.display = "flex";
+
             if (editingAlertId) {
                 // UPDATE Existing Alert
                 db.collection("alerts").doc(editingAlertId).update(alertData)
                 .then(() => {
+                    loadingOverlay.style.display = "none";
                     modal.style.display = "none";
                     resetModalForm();
                 })
-                .catch((error) => { console.error("Error updating document: ", error); });
+                .catch((error) => { 
+                    loadingOverlay.style.display = "none"; // Hide loader
+                    console.error("Error updating document: ", error); 
+                    alert("Something went wrong saving your alert. Please try again.");
+                });
             } else {
                 // CREATE New Alert
                 alertData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                 db.collection("alerts").add(alertData)
                 .then(() => {
+                    loadingOverlay.style.display = "none";
                     modal.style.display = "none";
                     resetModalForm();
                 })
-                .catch((error) => { console.error("Error adding document: ", error); });
+                .catch((error) => { 
+                    loadingOverlay.style.display = "none"; // Hide loader
+                    console.error("Error adding document: ", error); 
+                    alert("Something went wrong creating your alert. Please try again.");
+                });
             }
         });
 
@@ -560,6 +607,11 @@
 
         pastAlertsToggle.addEventListener('change', (e) => { renderPastAlerts(e.target.value); });
         renderPastAlerts('global');
+        
+        <div id="loadingOverlay">
+            <div class="spinner"></div>
+            <div class="loading-text">Saving Alert...</div>
+        </div>
     </script>
 </body>
 </html>
