@@ -6,18 +6,16 @@
     <title>Town of Harvey, LA</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
 
     <style>
-        /* --- Existing Base Styles --- */
+        /* --- Base Styles --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
+            background-color: #f4f7f6; color: #333; margin: 0; padding: 0; line-height: 1.6;
         }
         .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
         header { margin-bottom: 30px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; }
@@ -31,28 +29,19 @@
         
         select, input[type="time"], input[type="number"], input[type="text"] {
             padding: 8px 16px; border-radius: 8px; border: 1px solid #cbd5e0;
-            background-color: #f8fafc; font-size: 1rem; color: #2d3748;
-            outline: none; transition: border-color 0.2s; width: 100%;
-            box-sizing: border-box; margin-top: 5px; margin-bottom: 15px;
+            background-color: #f8fafc; font-size: 1rem; color: #2d3748; outline: none; transition: border-color 0.2s; width: 100%; box-sizing: border-box; margin-top: 5px; margin-bottom: 15px;
         }
         select { cursor: pointer; width: auto; margin: 0; }
         select:hover, select:focus, input:focus { border-color: #4299e1; }
         
-        /* --- Alerts Section & Button --- */
-        .btn {
-            background-color: #3182ce; color: white; border: none;
-            padding: 8px 16px; border-radius: 8px; font-size: 1rem;
-            cursor: pointer; transition: background-color 0.2s;
-        }
+        .btn { background-color: #3182ce; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; }
         .btn:hover { background-color: #2b6cb0; }
         
-        /* --- Alert List Styles (Used for both Active and Past) --- */
+        /* --- Alert List Styles --- */
         .alerts-list { display: flex; flex-direction: column; gap: 10px; }
         .alert-row {
             display: flex; justify-content: space-between; align-items: flex-start;
-            padding: 15px; background-color: #f8fafc;
-            border: 1px solid #e2e8f0; border-radius: 8px;
-            transition: box-shadow 0.2s;
+            padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; transition: box-shadow 0.2s;
         }
         .alert-row:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .alert-info { display: flex; flex-direction: column; width: 100%; }
@@ -61,38 +50,17 @@
         .alert-sub { font-size: 0.9rem; color: #718096; margin-top: 4px;}
         .alert-timestamp { font-size: 0.8rem; color: #a0aec0; margin-top: 8px; font-style: italic; }
         
-        .delete-btn {
-            background: none; border: none; color: #e53e3e; font-size: 1.2rem;
-            cursor: pointer; padding: 5px; opacity: 0.6; transition: opacity 0.2s;
-        }
+        .delete-btn { background: none; border: none; color: #e53e3e; font-size: 1.2rem; cursor: pointer; padding: 5px; opacity: 0.6; transition: opacity 0.2s; }
         .delete-btn:hover { opacity: 1; }
-        .alerts-placeholder {
-            min-height: 100px; border: 2px dashed #e2e8f0; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            color: #a0aec0; font-style: italic;
-        }
-
-        /* --- NEW: Badges for Past Alerts --- */
-        .badge {
-            padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;
-        }
+        .alerts-placeholder { min-height: 100px; border: 2px dashed #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #a0aec0; font-style: italic; }
+        .badge { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
         .badge-rto { background-color: #feebc8; color: #c05621; border: 1px solid #fbd38d; }
         .badge-platform { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
 
         /* --- Modal Styles --- */
-        .modal {
-            display: none; position: fixed; z-index: 1000; 
-            left: 0; top: 0; width: 100%; height: 100%; 
-            background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;
-        }
-        .modal-content {
-            background-color: #fefefe; padding: 30px; border-radius: 12px;
-            width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative;
-        }
-        .close-btn {
-            color: #a0aec0; float: right; font-size: 28px;
-            font-weight: bold; cursor: pointer; line-height: 1;
-        }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: #fefefe; padding: 30px; border-radius: 12px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+        .close-btn { color: #a0aec0; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1; }
         .close-btn:hover { color: #2d3748; }
         .modal-content h3 { margin-top: 0; color: #2d3748; margin-bottom: 20px;}
         .form-group label { font-weight: 600; font-size: 0.9rem; color: #4a5568; }
@@ -101,9 +69,7 @@
 <body>
 
     <div class="container">
-        <header>
-            <h1>Town of Harvey, LA</h1>
-        </header>
+        <header><h1>Town of Harvey, LA</h1></header>
 
         <div class="card">
             <div class="section-header">
@@ -115,7 +81,7 @@
                     <option value="feeder3">Feeder 3 (Mixed)</option>
                 </select>
             </div>
-            <canvas id="duckChart" height="100"></canvas>
+            <canvas id="duckChart" height="120"></canvas>
         </div>
 
         <div class="card">
@@ -123,9 +89,7 @@
                 <h2>My Alerts</h2>
                 <button class="btn" id="openModalBtn">+ Add Alert</button>
             </div>
-            <div id="alertsList" class="alerts-list">
-                <div class="alerts-placeholder">Loading alerts...</div>
-            </div>
+            <div id="alertsList" class="alerts-list"><div class="alerts-placeholder">Loading alerts...</div></div>
         </div>
 
         <div class="card">
@@ -137,8 +101,7 @@
                     <option value="platform">Platform</option>
                 </select>
             </div>
-            <div id="pastAlertsList" class="alerts-list">
-                </div>
+            <div id="pastAlertsList" class="alerts-list"></div>
         </div>
     </div>
 
@@ -146,40 +109,17 @@
         <div class="modal-content">
             <span class="close-btn" id="closeModalBtn">&times;</span>
             <h3>Create New Alert</h3>
-            
             <div class="form-group">
                 <label>Feeder</label>
                 <select id="alertFeeder" style="width: 100%;">
-                    <option value="global">Global</option>
-                    <option value="feeder1">Feeder 1</option>
-                    <option value="feeder2">Feeder 2</option>
-                    <option value="feeder3">Feeder 3</option>
+                    <option value="global">Global</option><option value="feeder1">Feeder 1</option>
+                    <option value="feeder2">Feeder 2</option><option value="feeder3">Feeder 3</option>
                 </select>
             </div>
-
-            <div class="form-group">
-                <label>Type</label>
-                <select id="alertType" style="width: 100%;">
-                    <option value="daily_set_time">Daily set time</option>
-                    <option value="trigger">Trigger</option>
-                </select>
-            </div>
-
-            <div class="form-group" id="timeGroup">
-                <label>Time of day</label>
-                <input type="time" id="alertTime">
-            </div>
-
-            <div class="form-group" id="thresholdGroup" style="display: none;">
-                <label>Above MW threshold:</label>
-                <input type="number" id="alertThreshold" step="0.1" placeholder="e.g. 5.5">
-            </div>
-
-            <div class="form-group">
-                <label>Alert sent to (comma separated emails)</label>
-                <input type="text" id="alertEmails" placeholder="admin@harvey.la, tech@harvey.la">
-            </div>
-
+            <div class="form-group"><label>Type</label><select id="alertType" style="width: 100%;"><option value="daily_set_time">Daily set time</option><option value="trigger">Trigger</option></select></div>
+            <div class="form-group" id="timeGroup"><label>Time of day</label><input type="time" id="alertTime"></div>
+            <div class="form-group" id="thresholdGroup" style="display: none;"><label>Above MW threshold:</label><input type="number" id="alertThreshold" step="0.1" placeholder="e.g. 5.5"></div>
+            <div class="form-group"><label>Alert sent to (comma separated emails)</label><input type="text" id="alertEmails" placeholder="admin@harvey.la, tech@harvey.la"></div>
             <button class="btn" id="confirmAlertBtn" style="width: 100%; margin-top: 10px;">Confirm</button>
         </div>
     </div>
@@ -197,42 +137,168 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- 2. CHART.JS SETUP ---
-        const labels = ['16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
-        const dataSets = {
+        // --- 2. ADVANCED CHART.JS SETUP ---
+        
+        // A. Generate 15-min Time Labels (97 total points for 24 hours)
+        const timeLabels15Min = [];
+        let h = 16, m = 0;
+        for (let i = 0; i < 97; i++) {
+            timeLabels15Min.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+            m += 15;
+            if (m === 60) { m = 0; h = (h + 1) % 24; }
+        }
+
+        // B. Interpolation helper (Turns 25 hourly points into 97 smooth 15-minute points)
+        function smooth15Min(arr) {
+            const res = [];
+            for (let i = 0; i < arr.length - 1; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const t = j / 4;
+                    // Cosine interpolation for organic curves
+                    const t2 = (1 - Math.cos(t * Math.PI)) / 2;
+                    res.push(arr[i] * (1 - t2) + arr[i+1] * t2);
+                }
+            }
+            res.push(arr[arr.length - 1]);
+            return res;
+        }
+
+        // C. Base Hourly Data (Current & Historical)
+        const baseData = {
             combined: [4.2, 4.8, 5.5, 5.9, 5.8, 5.2, 4.5, 3.8, 3.2, 2.8, 2.5, 2.4, 2.6, 3.0, 3.8, 4.2, 3.5, 2.5, 1.5, 1.0, 0.8, 1.2, 2.0, 3.2, 4.5],
+            combinedHist: [4.0, 4.5, 5.2, 5.6, 5.5, 5.0, 4.3, 3.7, 3.3, 3.0, 2.8, 2.8, 2.9, 3.3, 3.9, 4.3, 3.8, 3.0, 2.3, 1.8, 1.6, 1.9, 2.6, 3.3, 4.3],
+            
             feeder1: [1.8, 2.2, 2.8, 3.0, 2.8, 2.4, 1.9, 1.5, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.6, 1.8, 1.2, 0.5, 0.0, -0.2, -0.2, 0.2, 0.8, 1.5, 2.0],
+            feeder1Hist: [1.6, 2.0, 2.5, 2.8, 2.6, 2.3, 1.9, 1.5, 1.3, 1.2, 1.1, 1.1, 1.2, 1.4, 1.7, 1.9, 1.5, 0.9, 0.5, 0.3, 0.3, 0.6, 1.1, 1.6, 1.8],
+            
             feeder2: [1.4, 1.4, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8, 0.8, 0.8, 0.8, 0.8, 0.9, 1.0, 1.3, 1.5, 1.5, 1.4, 1.2, 1.0, 0.9, 0.9, 1.0, 1.2, 1.4],
-            feeder3: [1.0, 1.2, 1.4, 1.7, 1.9, 1.8, 1.7, 1.5, 1.2, 1.0, 0.8, 0.7, 0.7, 0.8, 0.9, 0.9, 0.8, 0.6, 0.3, 0.2, 0.1, 0.1, 0.2, 0.5, 1.1]
+            feeder2Hist: [1.4, 1.4, 1.3, 1.2, 1.1, 1.0, 1.0, 0.9, 0.9, 0.9, 0.9, 0.9, 1.0, 1.1, 1.3, 1.5, 1.5, 1.4, 1.3, 1.2, 1.1, 1.1, 1.2, 1.3, 1.4],
+            
+            feeder3: [1.0, 1.2, 1.4, 1.7, 1.9, 1.8, 1.7, 1.5, 1.2, 1.0, 0.8, 0.7, 0.7, 0.8, 0.9, 0.9, 0.8, 0.6, 0.3, 0.2, 0.1, 0.1, 0.2, 0.5, 1.1],
+            feeder3Hist: [1.0, 1.1, 1.4, 1.6, 1.8, 1.7, 1.4, 1.3, 1.1, 0.9, 0.8, 0.8, 0.7, 0.8, 0.9, 0.9, 0.8, 0.7, 0.5, 0.4, 0.3, 0.3, 0.4, 0.6, 1.0]
         };
 
+        // D. Generate final 15-min arrays
+        const smoothData = {};
+        for (const [key, arr] of Object.entries(baseData)) {
+            smoothData[key] = smooth15Min(arr);
+        }
+
+        // E. Define the Windows & Line configurations for each view
+        const views = {
+            combined: {
+                rampWindow: { min: '15:00', max: '15:30' },
+                datasets: [
+                    { label: 'Current Load (Combined)', data: smoothData.combined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, order: 1 },
+                    { label: 'Historical Avg (Combined)', data: smoothData.combinedHist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10, order: 2 },
+                    { label: 'Feeder 1', data: smoothData.feeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 3 },
+                    { label: 'Feeder 2', data: smoothData.feeder2, borderColor: '#38a169', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 4 },
+                    { label: 'Feeder 3', data: smoothData.feeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 5 }
+                ]
+            },
+            feeder1: {
+                rampWindow: { min: '15:15', max: '15:45' },
+                datasets: [
+                    { label: 'Feeder 1 (Current)', data: smoothData.feeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10 },
+                    { label: 'Historical Avg', data: smoothData.feeder1Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
+                ]
+            },
+            feeder2: {
+                rampWindow: { min: '14:30', max: '15:00' },
+                datasets: [
+                    { label: 'Feeder 2 (Current)', data: smoothData.feeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10 },
+                    { label: 'Historical Avg', data: smoothData.feeder2Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
+                ]
+            },
+            feeder3: {
+                rampWindow: { min: '14:45', max: '15:15' },
+                datasets: [
+                    { label: 'Feeder 3 (Current)', data: smoothData.feeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10 },
+                    { label: 'Historical Avg', data: smoothData.feeder3Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
+                ]
+            }
+        };
+
+        // F. Initialize Chart
         const ctx = document.getElementById('duckChart').getContext('2d');
         const duckChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Net Load (MW)',
-                    data: dataSets.combined,
-                    borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', borderWidth: 3, fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 6
-                }]
+                labels: timeLabels15Min,
+                datasets: views.combined.datasets
             },
             options: {
                 responsive: true,
-                plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { return c.parsed.y + ' MW'; } } } },
+                interaction: {
+                    mode: 'index', // Tooltip shows all values at hovered time
+                    intersect: false
+                },
+                plugins: {
+                    legend: { 
+                        display: true, 
+                        position: 'bottom',
+                        labels: { usePointStyle: true, boxWidth: 8 }
+                    },
+                    tooltip: {
+                        callbacks: { label: function(c) { return c.dataset.label + ': ' + c.parsed.y.toFixed(2) + ' MW'; } }
+                    },
+                    annotation: {
+                        annotations: {
+                            rampUpWindow: {
+                                type: 'box',
+                                xMin: views.combined.rampWindow.min,
+                                xMax: views.combined.rampWindow.max,
+                                backgroundColor: 'rgba(229, 62, 62, 0.15)',
+                                borderWidth: 1,
+                                borderColor: 'rgba(229, 62, 62, 0.4)',
+                                label: {
+                                    display: true,
+                                    content: 'Max Ramp-Up',
+                                    position: 'start',
+                                    color: '#c53030',
+                                    backgroundColor: 'rgba(255,255,255,0.8)',
+                                    font: { size: 10 }
+                                }
+                            }
+                        }
+                    }
+                },
                 scales: {
                     y: { title: { display: true, text: 'Megawatts (MW)' } },
-                    x: { title: { display: true, text: 'Time of Day' }, grid: { display: false } }
+                    x: { 
+                        title: { display: true, text: 'Time of Day' },
+                        grid: { display: false },
+                        ticks: {
+                            maxRotation: 0,
+                            callback: function(val, index) {
+                                const label = this.getLabelForValue(val);
+                                // Only show x-axis label every 4 hours (e.g., "16:00", "20:00", "00:00")
+                                if (label.endsWith(':00')) {
+                                    const hr = parseInt(label.split(':')[0], 10);
+                                    if (hr % 4 === 0) return label;
+                                }
+                                return null;
+                            }
+                        }
+                    }
                 }
             }
         });
 
+        // G. Toggle Logic updates both Datasets and the Red Window
         document.getElementById('feederToggle').addEventListener('change', function() {
-            duckChart.data.datasets[0].data = dataSets[this.value];
+            const selectedView = views[this.value];
+            duckChart.data.datasets = selectedView.datasets;
+            
+            // Update the red annotation box
+            duckChart.options.plugins.annotation.annotations.rampUpWindow.xMin = selectedView.rampWindow.min;
+            duckChart.options.plugins.annotation.annotations.rampUpWindow.xMax = selectedView.rampWindow.max;
+            
             duckChart.update();
         });
 
         // --- 3. MODAL & FIRESTORE LOGIC ---
+        // (This remains completely unchanged from your previous version)
         const modal = document.getElementById('alertModal');
         const openModalBtn = document.getElementById('openModalBtn');
         const closeModalBtn = document.getElementById('closeModalBtn');
@@ -315,9 +381,8 @@
         }
 
         // --- 4. PAST ALERTS LOGIC ---
-        // Hardcoded data with explicit Dates for sorting and realistic context
+        // (This remains completely unchanged)
         const pastAlertsData = [
-            // RTO Alerts (7 total)
             { type: 'rto', source: 'RTO System', timestamp: new Date('2026-06-04T09:00:00'), message: "Coincident Peak will happen between 2pm and 7pm tomorrow June 5, 2026." },
             { type: 'rto', source: 'RTO System', timestamp: new Date('2026-06-01T10:15:00'), message: "Coincident Peak will happen between 3pm and 6pm tomorrow June 2, 2026." },
             { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-30T08:30:00'), message: "Coincident Peak will happen between 1pm and 5pm tomorrow May 31, 2026." },
@@ -326,7 +391,6 @@
             { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-15T10:00:00'), message: "Coincident Peak will happen between 3pm and 7pm tomorrow May 16, 2026." },
             { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-10T08:00:00'), message: "Coincident Peak will happen between 1pm and 6pm tomorrow May 11, 2026." },
             
-            // Platform Alerts (3 total)
             { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-06-05T11:00:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 6:00-6:30pm window today June 5, 2026." },
             { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-06-02T12:30:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 5:30-6:00pm window today June 2, 2026." },
             { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-05-28T14:00:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 6:00-6:30pm window today May 28, 2026." }
@@ -336,15 +400,11 @@
         const pastAlertsToggle = document.getElementById('pastAlertsToggle');
 
         function renderPastAlerts(filterType) {
-            pastAlertsList.innerHTML = ''; // Clear container
-            
-            // Filter
+            pastAlertsList.innerHTML = '';
             let filteredAlerts = pastAlertsData;
             if (filterType !== 'global') {
                 filteredAlerts = pastAlertsData.filter(alert => alert.type === filterType);
             }
-
-            // Sort chronologically (descending - newest first)
             filteredAlerts.sort((a, b) => b.timestamp - a.timestamp);
 
             if (filteredAlerts.length === 0) {
@@ -352,14 +412,10 @@
                 return;
             }
 
-            // Render
             filteredAlerts.forEach(alert => {
                 const row = document.createElement('div');
                 row.className = 'alert-row';
-                
-                // Format timestamp for display (e.g., "Jun 5, 2026, 11:00 AM")
                 const timeString = alert.timestamp.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-                
                 const badgeClass = alert.type === 'rto' ? 'badge-rto' : 'badge-platform';
                 const badgeLabel = alert.type === 'rto' ? 'RTO' : 'Platform';
 
@@ -377,12 +433,10 @@
             });
         }
 
-        // Listen for dropdown changes
         pastAlertsToggle.addEventListener('change', (e) => {
             renderPastAlerts(e.target.value);
         });
 
-        // Initial render
         renderPastAlerts('global');
     </script>
 </body>
