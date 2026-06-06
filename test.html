@@ -3,22 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Page</title>
+    <title>NOAA Rapid Refresh Weather Forecast</title>
     <style>
         body {
+            font-family: Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
         }
         button {
             padding: 10px 20px;
             font-size: 16px;
+            cursor: pointer;
+        }
+        #data-container {
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <button>Click Me</button>
+    <div class="container">
+        <button id="fetchButton">Fetch Weather Data</button>
+        <div id="data-container"></div>
+    </div>
+    <script>
+        const apiUrl = 'https://www.ncei.noaa.gov/cdo-web/api/v2/datasets';
+        const token = 'your-access-token'; // Replace with actual token
+
+        document.getElementById('fetchButton').addEventListener('click', function() {
+            fetch(apiUrl, {
+                headers: {
+                    "token": token
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error("NETWORK RESPONSE ERROR");
+                }
+            })
+            .then(data => {
+                console.log(data);
+                displayData(data);
+            })
+            .catch(error => {
+                console.error("FETCH ERROR:", error);
+            });
+        });
+
+        function displayData(data) {
+            const container = document.getElementById("data-container");
+            data.forEach(item => {
+                const element = document.createElement("div");
+                element.innerHTML = `<p>${item.name}: ${item.value}</p>`;
+                container.appendChild(element);
+            });
+        }
+    </script>
 </body>
 </html>
