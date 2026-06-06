@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOAA Rapid Refresh Weather Forecast</title>
+    <title>NOAA Weather Forecast (via Cloudflare Worker)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,6 +24,16 @@
         }
         #data-container {
             margin-top: 20px;
+            max-width: 800px;
+            text-align: left;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
     </style>
 </head>
@@ -33,38 +43,30 @@
         <div id="data-container"></div>
     </div>
     <script>
-        const apiUrl = 'https://www.ncei.noaa.gov/cdo-web/api/v2/datasets';
-        const token = 'your-access-token'; // Replace with actual token
+        // Replace this with your Cloudflare Worker URL
+        const workerUrl = 'https://noaa-proxy.tdgbertrand.workers.dev';
 
         document.getElementById('fetchButton').addEventListener('click', function() {
-            fetch(apiUrl, {
-                headers: {
-                    "token": token
-                }
-            })
-            .then(response => {
-                if (response.ok) {
+            fetch(workerUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Worker error: ${response.status}`);
+                    }
                     return response.json();
-                } else {
-                    throw new Error("NETWORK RESPONSE ERROR");
-                }
-            })
-            .then(data => {
-                console.log(data);
-                displayData(data);
-            })
-            .catch(error => {
-                console.error("FETCH ERROR:", error);
-            });
+                })
+                .then(data => {
+                    displayData(data);
+                })
+                .catch(error => {
+                    console.error("FETCH ERROR:", error);
+                    document.getElementById('data-container').innerHTML =
+                        `<p style="color: red;">Error: ${error.message}</p>`;
+                });
         });
 
         function displayData(data) {
             const container = document.getElementById("data-container");
-            data.forEach(item => {
-                const element = document.createElement("div");
-                element.innerHTML = `<p>${item.name}: ${item.value}</p>`;
-                container.appendChild(element);
-            });
+            container.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
         }
     </script>
 </body>
