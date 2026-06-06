@@ -48,20 +48,15 @@
 
         document.getElementById('fetchButton').addEventListener('click', function() {
             fetch(workerUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Worker error: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    displayData(data);
-                })
-                .catch(error => {
-                    console.error("FETCH ERROR:", error);
-                    document.getElementById('data-container').innerHTML =
-                        `<p style="color: red;">Error: ${error.message}</p>`;
-                });
+              .then(response => response.json())
+              .then(data => {
+                document.getElementById('data-container').innerHTML =
+                  `<p>Current Temperature: ${data.temperature} ${data.unit}</p>`;
+              })
+              .catch(error => {
+                document.getElementById('data-container').innerHTML =
+                  `<p style="color: red;">Error: ${error.message}</p>`;
+              });
         });
 
         function displayData(data) {
