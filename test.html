@@ -61,8 +61,16 @@
         function displayData(data) {
             const container = document.getElementById("data-container");
             container.innerHTML = `
-                <p><strong>Time:</strong> ${data.time}</p>
-                <p><strong>GHI:</strong> ${data.ghi}</p>
+                <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ccc;">
+                    <strong>Next Hour (Hour 1)</strong><br>
+                    Time: ${data.forecasts[0].time}<br>
+                    GHI: ${data.forecasts[0].ghi}
+                </div>
+                <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ccc;">
+                    <strong>Following Hour (Hour 2)</strong><br>
+                    Time: ${data.forecasts[1].time}<br>
+                    GHI: ${data.forecasts[1].ghi}
+                </div>
                 <p><strong>Location:</strong> Latitude: ${data.location.lat}, Longitude: ${data.location.lon}</p>
                 <p><strong>Status:</strong> ${data.status || 'Success'}</p>
             `;
