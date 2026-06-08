@@ -206,12 +206,12 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Global tracker to distinguish between Create Mode (null) and Edit Mode (Document ID String)
+        // Global trackers
         let editingAlertId = null;
+        let activeThresholdAlerts = []; // NEW: Stores active trigger alerts for the chart
 
         // --- 2. LIVE CHART.JS SETUP (CONNECTED TO FIRESTORE) ---
         
-        // Initialize an empty chart first
         const ctx = document.getElementById('duckChart').getContext('2d');
         const duckChart = new Chart(ctx, {
             type: 'line',
@@ -230,6 +230,10 @@
                                 return context.dataset.label + ': ' + context.parsed.y.toFixed(2); 
                             } 
                         } 
+                    },
+                    // NEW: Initialize empty annotations block
+                    annotation: {
+                        annotations: {} 
                     }
                 },
                 scales: {
@@ -245,7 +249,6 @@
             }
         });
 
-        // Global variable to hold our live datasets
         const views = {
             combined: { datasets: [] },
             feeder1: { datasets: [] },
@@ -253,12 +256,43 @@
             feeder3: { datasets: [] }
         };
 
+        // NEW: Function to draw alert lines based on current dropdown view
+        function updateChartAnnotations() {
+            if (!duckChart) return;
+            const currentView = document.getElementById('feederToggle').value;
+            const annotations = {};
+
+            // Filter alerts that match the current dropdown view
+            const alertsForView = activeThresholdAlerts.filter(alert => alert.view === currentView);
+
+            alertsForView.forEach((alert, index) => {
+                annotations[`alert_${index}`] = {
+                    type: 'line',
+                    yMin: alert.value,
+                    yMax: alert.value,
+                    borderColor: '#e53e3e', // Red color
+                    borderWidth: 2,
+                    borderDash: [6, 6], // Dotted line
+                    label: {
+                        display: true,
+                        content: `${alert.name} Limit (${alert.value})`,
+                        position: 'start',
+                        backgroundColor: 'rgba(229, 62, 62, 0.9)',
+                        color: 'white',
+                        font: { size: 10, weight: 'bold' }
+                    }
+                };
+            });
+
+            duckChart.options.plugins.annotation.annotations = annotations;
+            duckChart.update();
+        }
+
         // Listen live to the "latest" document in the HarveyLA collection
         db.collection("HarveyLA").doc("latest").onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
 
-                // Safety check to make sure the worker has run and populated the new structure
                 if (!data.combined || !data.combined.forecasts) {
                     console.warn("Waiting for complete forecast data...");
                     return;
@@ -270,22 +304,17 @@
                 const ghiFeeder2 = [];
                 const ghiFeeder3 = [];
 
-                // Parse the 24 hours of data. 
-                // We use the combined array to define the time axis, since all locations share timestamps.
                 data.combined.forecasts.forEach((hourData, index) => {
                     const date = new Date(hourData.time);
                     const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     labels.push(timeString);
                     
                     ghiCombined.push(hourData.ghi);
-                    
-                    // Safely grab the corresponding hour for each feeder
                     ghiFeeder1.push(data.feeder1 && data.feeder1.forecasts[index] ? data.feeder1.forecasts[index].ghi : 0);
                     ghiFeeder2.push(data.feeder2 && data.feeder2.forecasts[index] ? data.feeder2.forecasts[index].ghi : 0);
                     ghiFeeder3.push(data.feeder3 && data.feeder3.forecasts[index] ? data.feeder3.forecasts[index].ghi : 0);
                 });
 
-                // Update the "Combined" view (Filled total curve + 3 thin lines for the feeders)
                 views.combined.datasets = [
                     { label: 'Combined GHI', data: ghiCombined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, order: 1 },
                     { label: 'Feeder 1', data: ghiFeeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 2 },
@@ -293,31 +322,21 @@
                     { label: 'Feeder 3', data: ghiFeeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 4 }
                 ];
 
-                // Update the individual feeder views (Single filled curve)
-                views.feeder1.datasets = [
-                    { label: 'Feeder 1 GHI', data: ghiFeeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }
-                ];
-                views.feeder2.datasets = [
-                    { label: 'Feeder 2 GHI', data: ghiFeeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }
-                ];
-                views.feeder3.datasets = [
-                    { label: 'Feeder 3 GHI', data: ghiFeeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }
-                ];
+                views.feeder1.datasets = [{ label: 'Feeder 1 GHI', data: ghiFeeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }];
+                views.feeder2.datasets = [{ label: 'Feeder 2 GHI', data: ghiFeeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }];
+                views.feeder3.datasets = [{ label: 'Feeder 3 GHI', data: ghiFeeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }];
 
-                // Push the updated data to the chart without breaking the current dropdown selection
                 const currentDropdownValue = document.getElementById('feederToggle').value;
                 duckChart.data.labels = labels;
                 duckChart.data.datasets = views[currentDropdownValue].datasets;
                 duckChart.update();
-            } else {
-                console.warn("No forecast data found in HarveyLA/latest");
             }
         });
 
         // Handle Dropdown changes
         document.getElementById('feederToggle').addEventListener('change', function() {
             duckChart.data.datasets = views[this.value].datasets;
-            duckChart.update();
+            updateChartAnnotations(); // NEW: Refresh annotations when view changes
         });
 
         // --- 3. MODAL & FIRESTORE LOGIC ---
@@ -329,7 +348,6 @@
         const thresholdGroup = document.getElementById('thresholdGroup');
         const confirmAlertBtn = document.getElementById('confirmAlertBtn');
 
-        // Helper to reset modal UI to "Create Mode" base settings
         function resetModalForm() {
             editingAlertId = null;
             document.getElementById('modalTitle').innerText = "Create New Alert";
@@ -358,7 +376,6 @@
             }
         });
 
-        // Save Button Handler (Handles both ADD and UPDATE actions)
         confirmAlertBtn.addEventListener('click', () => {
             const name = document.getElementById('alertName').value.trim();
             const feeder = document.getElementById('alertFeeder').value;
@@ -368,13 +385,7 @@
             const phonesRaw = document.getElementById('alertPhones').value;
             const phones = phonesRaw.split(',').map(phone => phone.trim()).filter(phone => phone !== "");
 
-            const alertData = {
-                name: name,
-                feeder: feeder, 
-                type: type, 
-                emails: emails,
-                phones: phones
-            };
+            const alertData = { name, feeder, type, emails, phones };
 
             if (type === 'daily_set_time') {
                 alertData.timeOfDay = document.getElementById('alertTime').value;
@@ -405,15 +416,33 @@
         const alertsList = document.getElementById('alertsList');
         db.collection("alerts").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
             alertsList.innerHTML = ''; 
+            activeThresholdAlerts = []; // NEW: Reset threshold alerts array on every database change
+            
             if (snapshot.empty) {
                 alertsList.innerHTML = `<div class="alerts-placeholder">No alerts created yet. Click "+ Add Alert" to begin.</div>`;
+                updateChartAnnotations(); // NEW: Clear chart annotations if no alerts exist
                 return;
             }
+            
             snapshot.forEach((doc) => {
                 const data = doc.data();
+                
+                // --- NEW: Capture Trigger Alerts for the Chart ---
+                if (data.type === 'trigger' && data.thresholdMW !== undefined) {
+                    // Map "global" from the form directly to "combined" to match your chart views
+                    const targetView = data.feeder === 'global' ? 'combined' : data.feeder;
+                    
+                    activeThresholdAlerts.push({
+                        id: doc.id,
+                        view: targetView,
+                        value: data.thresholdMW,
+                        name: data.name || `${data.feeder.charAt(0).toUpperCase() + data.feeder.slice(1)} Alert`
+                    });
+                }
+                
                 const cleanFeederName = data.feeder.charAt(0).toUpperCase() + data.feeder.slice(1).replace(/(\d+)/g, ' $1');
                 const titleToDisplay = data.name ? data.name : `${cleanFeederName} Alert`;
-                let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay}` : `Triggers when load exceeds ${data.thresholdMW} MW`;
+                let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay}` : `Triggers when load exceeds ${data.thresholdMW}`;
                 let phonesText = data.phones && data.phones.length > 0 ? data.phones.join(', ') : 'None';
                 
                 const row = document.createElement('div');
@@ -433,6 +462,9 @@
                 `;
                 alertsList.appendChild(row);
             });
+            
+            // NEW: Push the updated alerts into the chart
+            updateChartAnnotations(); 
         });
 
         window.openEditModal = function(docId) {
