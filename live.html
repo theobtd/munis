@@ -257,43 +257,54 @@
         db.collection("HarveyLA").doc("latest").onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                const forecasts = data.forecasts || [];
+
+                // Safety check to make sure the worker has run and populated the new structure
+                if (!data.combined || !data.combined.forecasts) {
+                    console.warn("Waiting for complete forecast data...");
+                    return;
+                }
 
                 const labels = [];
-                const ghiData = [];
+                const ghiCombined = [];
+                const ghiFeeder1 = [];
+                const ghiFeeder2 = [];
+                const ghiFeeder3 = [];
 
-                // Parse the 24 hours of data
-                forecasts.forEach(hourData => {
-                    // Convert Open-Meteo ISO string to a clean time label (e.g., "14:00")
+                // Parse the 24 hours of data. 
+                // We use the combined array to define the time axis, since all locations share timestamps.
+                data.combined.forecasts.forEach((hourData, index) => {
                     const date = new Date(hourData.time);
                     const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
                     labels.push(timeString);
-                    ghiData.push(hourData.ghi);
+                    
+                    ghiCombined.push(hourData.ghi);
+                    
+                    // Safely grab the corresponding hour for each feeder
+                    ghiFeeder1.push(data.feeder1 && data.feeder1.forecasts[index] ? data.feeder1.forecasts[index].ghi : 0);
+                    ghiFeeder2.push(data.feeder2 && data.feeder2.forecasts[index] ? data.feeder2.forecasts[index].ghi : 0);
+                    ghiFeeder3.push(data.feeder3 && data.feeder3.forecasts[index] ? data.feeder3.forecasts[index].ghi : 0);
                 });
 
-                // Update the "Combined" view with our real data
+                // Update the "Combined" view (Filled total curve + 3 thin lines for the feeders)
                 views.combined.datasets = [
-                    { 
-                        label: '24-Hour GHI Forecast', 
-                        data: ghiData, 
-                        borderColor: '#3182ce', 
-                        backgroundColor: 'rgba(49, 130, 206, 0.1)', 
-                        fill: true, 
-                        tension: 0.4, 
-                        borderWidth: 3, 
-                        pointRadius: 4, 
-                        pointHitRadius: 10 
-                    }
+                    { label: 'Combined GHI', data: ghiCombined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, order: 1 },
+                    { label: 'Feeder 1', data: ghiFeeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 2 },
+                    { label: 'Feeder 2', data: ghiFeeder2, borderColor: '#38a169', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 3 },
+                    { label: 'Feeder 3', data: ghiFeeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 4 }
                 ];
 
-                // Set empty datasets for the other views for now
-                const emptyDataset = { label: 'Data Unavailable', data: [], borderColor: '#cbd5e0', fill: false };
-                views.feeder1.datasets = [emptyDataset];
-                views.feeder2.datasets = [emptyDataset];
-                views.feeder3.datasets = [emptyDataset];
+                // Update the individual feeder views (Single filled curve)
+                views.feeder1.datasets = [
+                    { label: 'Feeder 1 GHI', data: ghiFeeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }
+                ];
+                views.feeder2.datasets = [
+                    { label: 'Feeder 2 GHI', data: ghiFeeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }
+                ];
+                views.feeder3.datasets = [
+                    { label: 'Feeder 3 GHI', data: ghiFeeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }
+                ];
 
-                // Push the updated data to the chart
+                // Push the updated data to the chart without breaking the current dropdown selection
                 const currentDropdownValue = document.getElementById('feederToggle').value;
                 duckChart.data.labels = labels;
                 duckChart.data.datasets = views[currentDropdownValue].datasets;
