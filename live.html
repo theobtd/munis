@@ -320,6 +320,153 @@
             duckChart.update();
         });
 
+        // --- 3. MODAL & FIRESTORE LOGIC ---
+        const modal = document.getElementById('alertModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const alertTypeSelect = document.getElementById('alertType');
+        const timeGroup = document.getElementById('timeGroup');
+        const thresholdGroup = document.getElementById('thresholdGroup');
+        const confirmAlertBtn = document.getElementById('confirmAlertBtn');
+
+        // Helper to reset modal UI to "Create Mode" base settings
+        function resetModalForm() {
+            editingAlertId = null;
+            document.getElementById('modalTitle').innerText = "Create New Alert";
+            document.getElementById('confirmAlertBtn').innerText = "Confirm";
+            document.getElementById('alertName').value = '';
+            document.getElementById('alertFeeder').value = 'global';
+            document.getElementById('alertType').value = 'daily_set_time';
+            document.getElementById('alertTime').value = '';
+            document.getElementById('alertThreshold').value = '';
+            document.getElementById('alertEmails').value = '';
+            document.getElementById('alertPhones').value = ''; 
+            
+            timeGroup.style.display = 'block';
+            thresholdGroup.style.display = 'none';
+        }
+
+        openModalBtn.onclick = () => { resetModalForm(); modal.style.display = "flex"; }
+        closeModalBtn.onclick = () => { modal.style.display = "none"; }
+        window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; }
+
+        alertTypeSelect.addEventListener('change', function() {
+            if (this.value === 'daily_set_time') {
+                timeGroup.style.display = 'block'; thresholdGroup.style.display = 'none';
+            } else {
+                timeGroup.style.display = 'none'; thresholdGroup.style.display = 'block';
+            }
+        });
+
+        // Save Button Handler (Handles both ADD and UPDATE actions)
+        confirmAlertBtn.addEventListener('click', () => {
+            const name = document.getElementById('alertName').value.trim();
+            const feeder = document.getElementById('alertFeeder').value;
+            const type = document.getElementById('alertType').value;
+            const emailsRaw = document.getElementById('alertEmails').value;
+            const emails = emailsRaw.split(',').map(email => email.trim()).filter(email => email !== "");
+            const phonesRaw = document.getElementById('alertPhones').value;
+            const phones = phonesRaw.split(',').map(phone => phone.trim()).filter(phone => phone !== "");
+
+            const alertData = {
+                name: name,
+                feeder: feeder, 
+                type: type, 
+                emails: emails,
+                phones: phones
+            };
+
+            if (type === 'daily_set_time') {
+                alertData.timeOfDay = document.getElementById('alertTime').value;
+                if (editingAlertId) alertData.thresholdMW = firebase.firestore.FieldValue.delete();
+            } else {
+                alertData.thresholdMW = parseFloat(document.getElementById('alertThreshold').value);
+                if (editingAlertId) alertData.timeOfDay = firebase.firestore.FieldValue.delete(); 
+            }
+
+            if (emails.length === 0) { alert("Please enter at least one email address."); return; }
+
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.style.display = "flex";
+
+            if (editingAlertId) {
+                db.collection("alerts").doc(editingAlertId).update(alertData)
+                .then(() => { loadingOverlay.style.display = "none"; modal.style.display = "none"; resetModalForm(); })
+                .catch((error) => { loadingOverlay.style.display = "none"; console.error(error); alert("Error saving alert."); });
+            } else {
+                alertData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                db.collection("alerts").add(alertData)
+                .then(() => { loadingOverlay.style.display = "none"; modal.style.display = "none"; resetModalForm(); })
+                .catch((error) => { loadingOverlay.style.display = "none"; console.error(error); alert("Error creating alert."); });
+            }
+        });
+
+        // Live Real-time Fetch Listener for "My Alerts"
+        const alertsList = document.getElementById('alertsList');
+        db.collection("alerts").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+            alertsList.innerHTML = ''; 
+            if (snapshot.empty) {
+                alertsList.innerHTML = `<div class="alerts-placeholder">No alerts created yet. Click "+ Add Alert" to begin.</div>`;
+                return;
+            }
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const cleanFeederName = data.feeder.charAt(0).toUpperCase() + data.feeder.slice(1).replace(/(\d+)/g, ' $1');
+                const titleToDisplay = data.name ? data.name : `${cleanFeederName} Alert`;
+                let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay}` : `Triggers when load exceeds ${data.thresholdMW} MW`;
+                let phonesText = data.phones && data.phones.length > 0 ? data.phones.join(', ') : 'None';
+                
+                const row = document.createElement('div');
+                row.className = 'alert-row';
+                row.innerHTML = `
+                    <div class="alert-info">
+                        <div class="alert-title-group"><span class="alert-title">${titleToDisplay}</span></div>
+                        <span class="alert-sub"><strong>Feeder Area:</strong> ${cleanFeederName}</span>
+                        <span class="alert-sub"><strong>Condition:</strong> ${conditionText}</span>
+                        <span class="alert-sub"><strong>Emails to:</strong> ${data.emails.join(', ')}</span>
+                        <span class="alert-sub"><strong>Texts to:</strong> ${phonesText}</span> 
+                    </div>
+                    <div class="alert-actions">
+                        <button class="edit-btn" onclick="openEditModal('${doc.id}')" title="Edit Alert">✏️</button>
+                        <button class="delete-btn" onclick="deleteAlert('${doc.id}')" title="Delete Alert">🗑️</button>
+                    </div>
+                `;
+                alertsList.appendChild(row);
+            });
+        });
+
+        window.openEditModal = function(docId) {
+            db.collection("alerts").doc(docId).get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    editingAlertId = docId;
+                    document.getElementById('modalTitle').innerText = "Edit Alert";
+                    document.getElementById('confirmAlertBtn').innerText = "Save Changes";
+                    document.getElementById('alertName').value = data.name || '';
+                    document.getElementById('alertFeeder').value = data.feeder;
+                    document.getElementById('alertType').value = data.type;
+                    
+                    if (data.type === 'daily_set_time') {
+                        document.getElementById('alertTime').value = data.timeOfDay || '';
+                        timeGroup.style.display = 'block'; thresholdGroup.style.display = 'none';
+                    } else {
+                        document.getElementById('alertThreshold').value = data.thresholdMW || '';
+                        timeGroup.style.display = 'none'; thresholdGroup.style.display = 'block';
+                    }
+                    
+                    document.getElementById('alertEmails').value = data.emails ? data.emails.join(', ') : '';
+                    document.getElementById('alertPhones').value = data.phones ? data.phones.join(', ') : '';
+                    modal.style.display = "flex";
+                }
+            }).catch((error) => console.error("Error loading alert data: ", error));
+        }
+
+        window.deleteAlert = function(docId) {
+            if(confirm("Are you sure you want to delete this alert?")) {
+                db.collection("alerts").doc(docId).delete().catch((error) => console.error("Error: ", error));
+            }
+        }
+
         // --- 4. PAST ALERTS LOGIC ---
         const pastAlertsData = [
             { type: 'rto', source: 'RTO System', timestamp: new Date('2026-06-04T09:00:00'), message: "Coincident Peak will happen between 2pm and 7pm tomorrow June 5, 2026." },
