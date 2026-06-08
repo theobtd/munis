@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Town of Harvey, LA</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* --- Base Styles --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6; color: #333; margin: 0; padding: 0; line-height: 1.6;
+        }
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        header { margin-bottom: 30px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; }
+        h1 { margin: 0; color: #2d3748; font-size: 2.2rem; }
+        .card {
+            background: #ffffff; border-radius: 12px; padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1); margin-bottom: 30px;
+        }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .section-header h2 { margin: 0; font-size: 1.2rem; color: #4a5568; }
+        
+        select, input[type="time"], input[type="number"], input[type="text"] {
+            padding: 8px 16px; border-radius: 8px; border: 1px solid #cbd5e0;
+            background-color: #f8fafc; font-size: 1rem; color: #2d3748; outline: none; transition: border-color 0.2s; width: 100%; box-sizing: border-box; margin-top: 5px; margin-bottom: 15px;
+        }
+        select { cursor: pointer; width: auto; margin: 0; }
+        select:hover, select:focus, input:focus { border-color: #4299e1; }
+        
+        .btn { background-color: #3182ce; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; }
+        .btn:hover { background-color: #2b6cb0; }
+        
+        /* --- Alert List Styles --- */
+        .alerts-list { display: flex; flex-direction: column; gap: 10px; }
+        .alert-row {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; transition: box-shadow 0.2s;
+        }
+        .alert-row:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .alert-info { display: flex; flex-direction: column; width: 100%; }
+        .alert-title-group { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+        .alert-title { font-weight: 600; color: #2d3748; font-size: 1.05rem; }
+        .alert-sub { font-size: 0.9rem; color: #718096; margin-top: 4px;}
+        .alert-timestamp { font-size: 0.8rem; color: #a0aec0; margin-top: 8px; font-style: italic; }
+        
+        .alert-actions { display: flex; gap: 8px; align-items: center; }
+        .delete-btn { background: none; border: none; color: #e53e3e; font-size: 1.2rem; cursor: pointer; padding: 5px; opacity: 0.6; transition: opacity 0.2s; }
+        .delete-btn:hover { opacity: 1; }
+        .edit-btn { background: none; border: none; color: #3182ce; font-size: 1.1rem; cursor: pointer; padding: 5px; opacity: 0.6; transition: opacity 0.2s; }
+        .edit-btn:hover { opacity: 1; }
+        
+        .alerts-placeholder { min-height: 100px; border: 2px dashed #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #a0aec0; font-style: italic; }
+        .badge { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+        .badge-rto { background-color: #feebc8; color: #c05621; border: 1px solid #fbd38d; }
+        .badge-platform { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+
+        /* --- Modal Styles --- */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: #fefefe; padding: 30px; border-radius: 12px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+        .close-btn { color: #a0aec0; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1; }
+        .close-btn:hover { color: #2d3748; }
+        .modal-content h3 { margin-top: 0; color: #2d3748; margin-bottom: 20px;}
+        .form-group label { font-weight: 600; font-size: 0.9rem; color: #4a5568; }
+
+        #loadingOverlay {
+            display: none; 
+            position: fixed; 
+            z-index: 2000; /* Higher than the modal (1000) */
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(255, 255, 255, 0.8); 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column;
+        }
+        .spinner {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #3182ce;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #2d3748;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header><h1>Town of Harvey, LA</h1></header>
+
+        <div class="card">
+            <div class="section-header">
+                <h2>BTM Solar Load Profile</h2>
+                <select id="feederToggle">
+                    <option value="combined">Combined</option>
+                    <option value="feeder1">Feeder 1 (Residential)</option>
+                    <option value="feeder2">Feeder 2 (Commercial)</option>
+                    <option value="feeder3">Feeder 3 (Mixed)</option>
+                </select>
+            </div>
+            <canvas id="duckChart" height="120"></canvas>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <h2>My Alerts</h2>
+                <button class="btn" id="openModalBtn">+ Add Alert</button>
+            </div>
+            <div id="alertsList" class="alerts-list"><div class="alerts-placeholder">Loading alerts...</div></div>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <h2>Past Alerts</h2>
+                <select id="pastAlertsToggle">
+                    <option value="global">Global</option>
+                    <option value="rto">RTO</option>
+                    <option value="platform">Platform</option>
+                </select>
+            </div>
+            <div id="pastAlertsList" class="alerts-list"></div>
+        </div>
+    </div>
+
+    <div id="alertModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModalBtn">&times;</span>
+            <h3 id="modalTitle">Create New Alert</h3>
+            
+            <div class="form-group">
+                <label>Alert Name (Optional)</label>
+                <input type="text" id="alertName" placeholder="e.g. Evening Peak Warning">
+            </div>
+            
+            <div class="form-group">
+                <label>Feeder</label>
+                <select id="alertFeeder" style="width: 100%;">
+                    <option value="global">Global</option>
+                    <option value="feeder1">Feeder 1</option>
+                    <option value="feeder2">Feeder 2</option>
+                    <option value="feeder3">Feeder 3</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Type</label>
+                <select id="alertType" style="width: 100%;">
+                    <option value="daily_set_time">Daily set time</option>
+                    <option value="trigger">Trigger</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="timeGroup">
+                <label>Time of day</label>
+                <input type="time" id="alertTime">
+            </div>
+            
+            <div class="form-group" id="thresholdGroup" style="display: none;">
+                <label>Above MW threshold:</label>
+                <input type="number" id="alertThreshold" step="0.1" placeholder="e.g. 5.5">
+            </div>
+            
+            <div class="form-group">
+                <label>Alert sent to (comma separated emails)</label>
+                <input type="text" id="alertEmails" placeholder="admin@harvey.la, tech@harvey.la">
+            </div>
+
+            <div class="form-group">
+                <label>Alert sent to (comma separated phone numbers)</label>
+                <input type="text" id="alertPhones" placeholder="555-0100, 555-0101">
+            </div>
+            
+            <button class="btn" id="confirmAlertBtn" style="width: 100%; margin-top: 10px;">Confirm</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. FIREBASE SETUP ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAEvf4rQCkdssjxbjhDD5l7QTx677qmqt4",
+            authDomain: "munis-c97ac.firebaseapp.com",
+            projectId: "munis-c97ac",
+            storageBucket: "munis-c97ac.appspot.com",
+            messagingSenderId: "146364565400",
+            appId: "1:146364565400:web:c2640c0b98fb78db6e4ded"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Global tracker to distinguish between Create Mode (null) and Edit Mode (Document ID String)
+        let editingAlertId = null;
+
+        // --- 2. ADVANCED CHART.JS SETUP ---
+        const timeLabels15Min = [];
+        
+        // Start the day at Midnight (00:00) so the whole day is visible
+        let h = 0, m = 0;
+        for (let i = 0; i < 97; i++) {
+            timeLabels15Min.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+            m += 15;
+            if (m === 60) { m = 0; h = (h + 1) % 24; }
+        }
+
+        function smooth15Min(arr) {
+            const res = [];
+            for (let i = 0; i < arr.length - 1; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const t = j / 4;
+                    const t2 = (1 - Math.cos(t * Math.PI)) / 2;
+                    res.push(arr[i] * (1 - t2) + arr[i+1] * t2);
+                }
+            }
+            res.push(arr[arr.length - 1]);
+            return res;
+        }
+
+        // Helper to rotate your original data so the dip is at Midday and Peak is at 7pm
+        function rotateArray(arr, shifts) {
+            return arr.slice(shifts).concat(arr.slice(0, shifts));
+        }
+
+        // We shift the arrays left by 8 hours to align the duck curve properly with a midnight start
+        const baseData = {
+                combined: rotateArray([8.5, 8.0, 7.0, 5.5, 3.5, 2.0, 1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 2.0, 4.0, 6.0, 7.5, 8.0, 8.5, 8.0, 7.0, 5.5, 3.5], 8),
+                combinedHist: rotateArray([8.5, 8.0, 7.0, 5.5, 3.5, 2.0, 1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 2.0, 4.0, 6.0, 7.5, 8.0, 8.5, 8.0, 7.0, 5.5, 3.5], 8),
+                feeder1: rotateArray([3.4, 3.2, 2.8, 2.2, 1.4, 0.8, 0.4, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.8, 1.6, 2.4, 3.0, 3.2, 3.4, 3.2, 2.8, 2.2, 1.4], 8),
+                feeder1Hist: rotateArray([3.4, 3.2, 2.8, 2.2, 1.4, 0.8, 0.4, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.8, 1.6, 2.4, 3.0, 3.2, 3.4, 3.2, 2.8, 2.2, 1.4], 8),
+                feeder2: rotateArray([2.55, 2.4, 2.1, 1.65, 1.05, 0.6, 0.3, 0.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.15, 0.6, 1.2, 1.8, 2.25, 2.4, 2.55, 2.4, 2.1, 1.65, 1.05], 8),
+                feeder2Hist: rotateArray([2.55, 2.4, 2.1, 1.65, 1.05, 0.6, 0.3, 0.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.15, 0.6, 1.2, 1.8, 2.25, 2.4, 2.55, 2.4, 2.1, 1.65, 1.05], 8),
+                feeder3: rotateArray([1.7, 1.6, 1.4, 1.1, 0.7, 0.4, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.4, 0.8, 1.2, 1.5, 1.6, 1.7, 1.6, 1.4, 1.1, 0.7], 8),
+                feeder3Hist: rotateArray([1.7, 1.6, 1.4, 1.1, 0.7, 0.4, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.4, 0.8, 1.2, 1.5, 1.6, 1.7, 1.6, 1.4, 1.1, 0.7], 8),
+        };
+
+        const smoothData = {};
+        for (const [key, arr] of Object.entries(baseData)) {
+            smoothData[key] = smooth15Min(arr);
+        }
+
+        // Setup Current Time Logic
+        const currentTimeString = '11:15'; // Closest 15-min interval to 11:17 for logic
+        const currentTimeIndex = timeLabels15Min.indexOf(currentTimeString);
+
+        // Reusable segment styling: Solid before current time, dashed & un-filled after (Forecast)
+        const forecastSegment = {
+            borderDash: ctx => ctx.p0DataIndex >= currentTimeIndex ? [5, 5] : undefined,
+            backgroundColor: ctx => ctx.p0DataIndex >= currentTimeIndex ? 'transparent' : undefined
+        };
+
+        // Shifted Ramp-Up windows to the future (between 5:30 PM and 7:15 PM)
+        const views = {
+            combined: {
+                rampWindow: { min: '17:45', max: '18:45' },
+                datasets: [
+                    { label: 'Current Load (Combined)', data: smoothData.combined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, order: 1, segment: forecastSegment },
+                    { label: 'Historical Avg (Combined)', data: smoothData.combinedHist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10, order: 2 },
+                    { label: 'Feeder 1', data: smoothData.feeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 3, segment: forecastSegment },
+                    { label: 'Feeder 2', data: smoothData.feeder2, borderColor: '#38a169', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 4, segment: forecastSegment },
+                    { label: 'Feeder 3', data: smoothData.feeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 5, segment: forecastSegment }
+                ]
+            },
+            feeder1: {
+                rampWindow: { min: '18:00', max: '19:00' },
+                datasets: [
+                    { label: 'Feeder 1 (Current)', data: smoothData.feeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, segment: forecastSegment },
+                    { label: 'Historical Avg', data: smoothData.feeder1Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
+                ]
+            },
+            feeder2: {
+                rampWindow: { min: '17:30', max: '18:30' },
+                datasets: [
+                    { label: 'Feeder 2 (Current)', data: smoothData.feeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, segment: forecastSegment },
+                    { label: 'Historical Avg', data: smoothData.feeder2Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
+                ]
+            },
+            feeder3: {
+                rampWindow: { min: '18:15', max: '19:15' },
+                datasets: [
+                    { label: 'Feeder 3 (Current)', data: smoothData.feeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, segment: forecastSegment },
+                    { label: 'Historical Avg', data: smoothData.feeder3Hist, borderColor: '#718096', borderDash: [5, 5], fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHitRadius: 10 }
+                ]
+            }
+        };
+
+        const ctx = document.getElementById('duckChart').getContext('2d');
+        const duckChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: timeLabels15Min, datasets: views.combined.datasets },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } },
+                    tooltip: { callbacks: { label: function(c) { return c.dataset.label + ': ' + c.parsed.y.toFixed(2) + ' MW'; } } },
+                    annotation: {
+                        annotations: {
+                            currentTimeLine: {
+                                type: 'line',
+                                xMin: currentTimeString,
+                                xMax: currentTimeString,
+                                borderColor: '#718096',
+                                borderWidth: 2,
+                                borderDash: [3, 3],
+                                label: {
+                                    display: true,
+                                    content: 'Current Time (11:17 AM)',
+                                    position: 'start',
+                                    yAdjust: 10,
+                                    backgroundColor: 'rgba(113, 128, 150, 0.8)',
+                                    color: 'white',
+                                    font: { size: 10, weight: 'bold' }
+                                }
+                            },
+                            rampUpWindow: {
+                                type: 'box', 
+                                xMin: views.combined.rampWindow.min, 
+                                xMax: views.combined.rampWindow.max,
+                                backgroundColor: 'rgba(229, 62, 62, 0.15)', 
+                                borderWidth: 1, 
+                                borderColor: 'rgba(229, 62, 62, 0.4)',
+                                label: { display: true, content: 'Max Ramp-Up', position: 'start', color: '#c53030', backgroundColor: 'rgba(255,255,255,0.8)', font: { size: 10 } }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { title: { display: true, text: 'Megawatts (MW)' } },
+                    x: { 
+                        title: { display: true, text: 'Time of Day' }, grid: { display: false },
+                        ticks: {
+                            maxRotation: 0,
+                            callback: function(val, index) {
+                                const label = this.getLabelForValue(val);
+                                if (label.endsWith(':00')) {
+                                    const hr = parseInt(label.split(':')[0], 10);
+                                    if (hr % 4 === 0) return label;
+                                }
+                                return null;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        document.getElementById('feederToggle').addEventListener('change', function() {
+            const selectedView = views[this.value];
+            duckChart.data.datasets = selectedView.datasets;
+            duckChart.options.plugins.annotation.annotations.rampUpWindow.xMin = selectedView.rampWindow.min;
+            duckChart.options.plugins.annotation.annotations.rampUpWindow.xMax = selectedView.rampWindow.max;
+            duckChart.update();
+        });
+
+        // --- 3. MODAL & FIRESTORE LOGIC ---
+        const modal = document.getElementById('alertModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const alertTypeSelect = document.getElementById('alertType');
+        const timeGroup = document.getElementById('timeGroup');
+        const thresholdGroup = document.getElementById('thresholdGroup');
+        const confirmAlertBtn = document.getElementById('confirmAlertBtn');
+
+        // Helper to reset modal UI to "Create Mode" base settings
+        function resetModalForm() {
+            editingAlertId = null;
+            document.getElementById('modalTitle').innerText = "Create New Alert";
+            document.getElementById('confirmAlertBtn').innerText = "Confirm";
+            document.getElementById('alertName').value = '';
+            document.getElementById('alertFeeder').value = 'global';
+            document.getElementById('alertType').value = 'daily_set_time';
+            document.getElementById('alertTime').value = '';
+            document.getElementById('alertThreshold').value = '';
+            document.getElementById('alertEmails').value = '';
+            
+            // ADD THIS LINE:
+            document.getElementById('alertPhones').value = ''; 
+            
+            timeGroup.style.display = 'block';
+            thresholdGroup.style.display = 'none';
+        }
+
+        openModalBtn.onclick = () => { resetModalForm(); modal.style.display = "flex"; }
+        closeModalBtn.onclick = () => { modal.style.display = "none"; }
+        window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; }
+
+        alertTypeSelect.addEventListener('change', function() {
+            if (this.value === 'daily_set_time') {
+                timeGroup.style.display = 'block'; thresholdGroup.style.display = 'none';
+            } else {
+                timeGroup.style.display = 'none'; thresholdGroup.style.display = 'block';
+            }
+        });
+
+        // Save Button Handler (Handles both ADD and UPDATE actions)
+        confirmAlertBtn.addEventListener('click', () => {
+            const name = document.getElementById('alertName').value.trim();
+            const feeder = document.getElementById('alertFeeder').value;
+            const type = document.getElementById('alertType').value;
+            const emailsRaw = document.getElementById('alertEmails').value;
+            const emails = emailsRaw.split(',').map(email => email.trim()).filter(email => email !== "");
+            const phonesRaw = document.getElementById('alertPhones').value;
+            const phones = phonesRaw.split(',').map(phone => phone.trim()).filter(phone => phone !== "");
+
+            const alertData = {
+                name: name,
+                feeder: feeder, 
+                type: type, 
+                emails: emails,
+                phones: phones
+            };
+
+            if (type === 'daily_set_time') {
+                alertData.timeOfDay = document.getElementById('alertTime').value;
+                // ONLY use delete() if updating an existing alert
+                if (editingAlertId) {
+                    alertData.thresholdMW = firebase.firestore.FieldValue.delete();
+                }
+            } else {
+                alertData.thresholdMW = parseFloat(document.getElementById('alertThreshold').value);
+                // ONLY use delete() if updating an existing alert
+                if (editingAlertId) {
+                    alertData.timeOfDay = firebase.firestore.FieldValue.delete(); 
+                }
+            }
+
+            if (emails.length === 0) { alert("Please enter at least one email address."); return; }
+
+            // Get reference to the loader
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            // Show the loader and freeze the screen
+            loadingOverlay.style.display = "flex";
+
+            if (editingAlertId) {
+                // UPDATE Existing Alert
+                db.collection("alerts").doc(editingAlertId).update(alertData)
+                .then(() => {
+                    loadingOverlay.style.display = "none";
+                    modal.style.display = "none";
+                    resetModalForm();
+                })
+                .catch((error) => { 
+                    loadingOverlay.style.display = "none"; // Hide loader
+                    console.error("Error updating document: ", error); 
+                    alert("Something went wrong saving your alert. Please try again.");
+                });
+            } else {
+                // CREATE New Alert
+                alertData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                db.collection("alerts").add(alertData)
+                .then(() => {
+                    loadingOverlay.style.display = "none";
+                    modal.style.display = "none";
+                    resetModalForm();
+                })
+                .catch((error) => { 
+                    loadingOverlay.style.display = "none"; // Hide loader
+                    console.error("Error adding document: ", error); 
+                    alert("Something went wrong creating your alert. Please try again.");
+                });
+            }
+        });
+
+        // Live Real-time Fetch Listener for "My Alerts"
+        const alertsList = document.getElementById('alertsList');
+        db.collection("alerts").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+            alertsList.innerHTML = ''; 
+            if (snapshot.empty) {
+                alertsList.innerHTML = `<div class="alerts-placeholder">No alerts created yet. Click "+ Add Alert" to begin.</div>`;
+                return;
+            }
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const cleanFeederName = data.feeder.charAt(0).toUpperCase() + data.feeder.slice(1).replace(/(\d+)/g, ' $1');
+                
+                // Fallback title if user skipped naming it
+                const titleToDisplay = data.name ? data.name : `${cleanFeederName} Alert`;
+                
+                let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay}` : `Triggers when load exceeds ${data.thresholdMW} MW`;
+                let phonesText = data.phones && data.phones.length > 0 ? data.phones.join(', ') : 'None';
+                const row = document.createElement('div');
+                row.className = 'alert-row';
+                row.innerHTML = `
+                    <div class="alert-info">
+                        <div class="alert-title-group"><span class="alert-title">${titleToDisplay}</span></div>
+                        <span class="alert-sub"><strong>Feeder Area:</strong> ${cleanFeederName}</span>
+                        <span class="alert-sub"><strong>Condition:</strong> ${conditionText}</span>
+                        <span class="alert-sub"><strong>Emails to:</strong> ${data.emails.join(', ')}</span>
+                        <span class="alert-sub"><strong>Texts to:</strong> ${phonesText}</span> 
+                    </div>
+                    <div class="alert-actions">
+                        <button class="edit-btn" onclick="openEditModal('${doc.id}')" title="Edit Alert">✏️</button>
+                        <button class="delete-btn" onclick="deleteAlert('${doc.id}')" title="Delete Alert">🗑️</button>
+                    </div>
+                `;
+                alertsList.appendChild(row);
+            });
+        });
+
+        // Global function called when clicking Edit (✏️)
+        window.openEditModal = function(docId) {
+            db.collection("alerts").doc(docId).get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    editingAlertId = docId;
+                    
+                    // Modify Modal elements to indicate Editing Mode
+                    document.getElementById('modalTitle').innerText = "Edit Alert";
+                    document.getElementById('confirmAlertBtn').innerText = "Save Changes";
+                    
+                    // Inject database content into inputs
+                    document.getElementById('alertName').value = data.name || '';
+                    document.getElementById('alertFeeder').value = data.feeder;
+                    document.getElementById('alertType').value = data.type;
+                    
+                    if (data.type === 'daily_set_time') {
+                        document.getElementById('alertTime').value = data.timeOfDay || '';
+                        timeGroup.style.display = 'block';
+                        thresholdGroup.style.display = 'none';
+                    } else {
+                        document.getElementById('alertThreshold').value = data.thresholdMW || '';
+                        timeGroup.style.display = 'none';
+                        thresholdGroup.style.display = 'block';
+                    }
+                    
+                    document.getElementById('alertEmails').value = data.emails ? data.emails.join(', ') : '';
+                    document.getElementById('alertPhones').value = data.phones ? data.phones.join(', ') : '';
+                    modal.style.display = "flex";
+                }
+            }).catch((error) => console.error("Error loading alert data: ", error));
+        }
+
+        window.deleteAlert = function(docId) {
+            if(confirm("Are you sure you want to delete this alert?")) {
+                db.collection("alerts").doc(docId).delete().catch((error) => console.error("Error: ", error));
+            }
+        }
+
+        // --- 4. PAST ALERTS LOGIC ---
+        const pastAlertsData = [
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-06-04T09:00:00'), message: "Coincident Peak will happen between 2pm and 7pm tomorrow June 5, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-06-01T10:15:00'), message: "Coincident Peak will happen between 3pm and 6pm tomorrow June 2, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-30T08:30:00'), message: "Coincident Peak will happen between 1pm and 5pm tomorrow May 31, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-26T11:00:00'), message: "Coincident Peak will happen between 4pm and 8pm tomorrow May 27, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-20T09:45:00'), message: "Coincident Peak will happen between 2pm and 7pm tomorrow May 21, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-15T10:00:00'), message: "Coincident Peak will happen between 3pm and 7pm tomorrow May 16, 2026." },
+            { type: 'rto', source: 'RTO System', timestamp: new Date('2026-05-10T08:00:00'), message: "Coincident Peak will happen between 1pm and 6pm tomorrow May 11, 2026." },
+            
+            { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-06-05T11:00:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 6:00-6:30pm window today June 5, 2026." },
+            { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-06-02T12:30:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 5:30-6:00pm window today June 2, 2026." },
+            { type: 'platform', source: 'Platform Trigger', timestamp: new Date('2026-05-28T14:00:00'), message: "Solar BTM above 5MW threshold - max ramp up time will happen in the 6:00-6:30pm window today May 28, 2026." }
+        ];
+
+        const pastAlertsList = document.getElementById('pastAlertsList');
+        const pastAlertsToggle = document.getElementById('pastAlertsToggle');
+
+        function renderPastAlerts(filterType) {
+            pastAlertsList.innerHTML = '';
+            let filteredAlerts = pastAlertsData;
+            if (filterType !== 'global') {
+                filteredAlerts = pastAlertsData.filter(alert => alert.type === filterType);
+            }
+            filteredAlerts.sort((a, b) => b.timestamp - a.timestamp);
+
+            if (filteredAlerts.length === 0) {
+                pastAlertsList.innerHTML = `<div class="alerts-placeholder">No past alerts found.</div>`;
+                return;
+            }
+
+            filteredAlerts.forEach(alert => {
+                const row = document.createElement('div');
+                row.className = 'alert-row';
+                const timeString = alert.timestamp.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+                const badgeClass = alert.type === 'rto' ? 'badge-rto' : 'badge-platform';
+                const badgeLabel = alert.type === 'rto' ? 'RTO' : 'Platform';
+
+                row.innerHTML = `
+                    <div class="alert-info">
+                        <div class="alert-title-group">
+                            <span class="badge ${badgeClass}">${badgeLabel}</span>
+                            <span class="alert-title">${alert.source}</span>
+                        </div>
+                        <span class="alert-sub">${alert.message}</span>
+                        <span class="alert-timestamp">Received: ${timeString}</span>
+                    </div>
+                `;
+                pastAlertsList.appendChild(row);
+            });
+        }
+
+        pastAlertsToggle.addEventListener('change', (e) => { renderPastAlerts(e.target.value); });
+        renderPastAlerts('global');
+    </script>
+
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Saving Alert...</div>
+    </div>
+    
+</body>
+</html>
