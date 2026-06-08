@@ -45,7 +45,7 @@
     <script>
         // Replace this with your Cloudflare Worker URL
         const workerUrl = 'https://noaa-proxy.tdgbertrand.workers.dev/';
-
+    
         document.getElementById('fetchButton').addEventListener('click', function() {
             fetch(workerUrl)
               .then(response => response.json())
@@ -57,22 +57,32 @@
                   `<p style="color: red;">Error: ${error.message}</p>`;
               });
         });
+    
         function displayData(data) {
             const container = document.getElementById("data-container");
-            container.innerHTML = `
-                <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ccc;">
-                    <strong>Next Hour (Hour 1)</strong><br>
-                    Time: ${data.forecasts[0].time}<br>
-                    GHI: ${data.forecasts[0].ghi}
+            
+            // Start building the HTML string with the location and status
+            let htmlContent = `
+                <div style="margin-bottom: 20px;">
+                    <p><strong>Location:</strong> Latitude: ${data.location.lat}, Longitude: ${data.location.lon}</p>
+                    <p><strong>Status:</strong> ${data.status || 'Success'}</p>
                 </div>
-                <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ccc;">
-                    <strong>Following Hour (Hour 2)</strong><br>
-                    Time: ${data.forecasts[1].time}<br>
-                    GHI: ${data.forecasts[1].ghi}
-                </div>
-                <p><strong>Location:</strong> Latitude: ${data.location.lat}, Longitude: ${data.location.lon}</p>
-                <p><strong>Status:</strong> ${data.status || 'Success'}</p>
+                <h3>24-Hour GHI Forecast</h3>
             `;
+    
+            // Loop through all 24 forecasts and append them to the HTML string
+            data.forecasts.forEach((forecast, index) => {
+                htmlContent += `
+                    <div style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ccc;">
+                        <strong>Hour ${index + 1}</strong><br>
+                        Time: ${forecast.time}<br>
+                        GHI: ${forecast.ghi}
+                    </div>
+                `;
+            });
+    
+            // Inject the final generated HTML into the container
+            container.innerHTML = htmlContent;
         }
     </script>
 </body>
