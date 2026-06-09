@@ -172,6 +172,16 @@
             <div class="form-group" id="timeGroup">
                 <label>Time of day</label>
                 <input type="time" id="alertTime">
+                
+                <label style="margin-top: 10px; display: block;">Time Zone</label>
+                <select id="alertTimezone" style="width: 100%;">
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="America/Chicago" selected>Central Time (CT)</option>
+                    <option value="America/Denver">Mountain Time (MT)</option>
+                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    <option value="America/Anchorage">Alaska Time (AKT)</option>
+                    <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
+                </select>
             </div>
             
             <div class="form-group" id="thresholdGroup" style="display: none;">
@@ -356,6 +366,7 @@
             document.getElementById('alertFeeder').value = 'global';
             document.getElementById('alertType').value = 'daily_set_time';
             document.getElementById('alertTime').value = '';
+            document.getElementById('alertTimezone').value = 'America/Chicago'; // Default to Central
             document.getElementById('alertThreshold').value = '';
             document.getElementById('alertEmails').value = '';
             document.getElementById('alertPhones').value = ''; 
@@ -384,22 +395,26 @@
             const emails = emailsRaw.split(',').map(email => email.trim()).filter(email => email !== "");
             const phonesRaw = document.getElementById('alertPhones').value;
             const phones = phonesRaw.split(',').map(phone => phone.trim()).filter(phone => phone !== "");
-
+        
             const alertData = { name, feeder, type, emails, phones };
-
+        
             if (type === 'daily_set_time') {
                 alertData.timeOfDay = document.getElementById('alertTime').value;
+                alertData.timezone = document.getElementById('alertTimezone').value;
                 if (editingAlertId) alertData.thresholdMW = firebase.firestore.FieldValue.delete();
             } else {
                 alertData.thresholdMW = parseFloat(document.getElementById('alertThreshold').value);
-                if (editingAlertId) alertData.timeOfDay = firebase.firestore.FieldValue.delete(); 
+                if (editingAlertId) {
+                    alertData.timeOfDay = firebase.firestore.FieldValue.delete(); 
+                    alertData.timezone = firebase.firestore.FieldValue.delete(); 
+                }
             }
-
+        
             if (emails.length === 0) { alert("Please enter at least one email address."); return; }
-
+        
             const loadingOverlay = document.getElementById('loadingOverlay');
             loadingOverlay.style.display = "flex";
-
+        
             if (editingAlertId) {
                 db.collection("alerts").doc(editingAlertId).update(alertData)
                 .then(() => { loadingOverlay.style.display = "none"; modal.style.display = "none"; resetModalForm(); })
@@ -416,22 +431,29 @@
         const alertsList = document.getElementById('alertsList');
         db.collection("alerts").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
             alertsList.innerHTML = ''; 
-            activeThresholdAlerts = []; // NEW: Reset threshold alerts array on every database change
+            activeThresholdAlerts = []; 
             
             if (snapshot.empty) {
                 alertsList.innerHTML = `<div class="alerts-placeholder">No alerts created yet. Click "+ Add Alert" to begin.</div>`;
-                updateChartAnnotations(); // NEW: Clear chart annotations if no alerts exist
+                updateChartAnnotations(); 
                 return;
             }
             
+            // Mapping object to render friendly shorthand names in the UI list
+            const tzLabels = {
+                'America/New_York': 'ET',
+                'America/Chicago': 'CT',
+                'America/Denver': 'MT',
+                'America/Los_Angeles': 'PT',
+                'America/Anchorage': 'AKT',
+                'Pacific/Honolulu': 'HST'
+            };
+        
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 
-                // --- NEW: Capture Trigger Alerts for the Chart ---
                 if (data.type === 'trigger' && data.thresholdMW !== undefined) {
-                    // Map "global" from the form directly to "combined" to match your chart views
                     const targetView = data.feeder === 'global' ? 'combined' : data.feeder;
-                    
                     activeThresholdAlerts.push({
                         id: doc.id,
                         view: targetView,
@@ -442,7 +464,10 @@
                 
                 const cleanFeederName = data.feeder.charAt(0).toUpperCase() + data.feeder.slice(1).replace(/(\d+)/g, ' $1');
                 const titleToDisplay = data.name ? data.name : `${cleanFeederName} Alert`;
-                let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay}` : `Triggers when load exceeds ${data.thresholdMW}`;
+                
+                // Dynamic string to append time zones to daily triggers
+                const tzAbbr = tzLabels[data.timezone] || 'CT';
+                let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay} (${tzAbbr})` : `Triggers when load exceeds ${data.thresholdMW}`;
                 let phonesText = data.phones && data.phones.length > 0 ? data.phones.join(', ') : 'None';
                 
                 const row = document.createElement('div');
@@ -463,7 +488,6 @@
                 alertsList.appendChild(row);
             });
             
-            // NEW: Push the updated alerts into the chart
             updateChartAnnotations(); 
         });
 
@@ -480,6 +504,7 @@
                     
                     if (data.type === 'daily_set_time') {
                         document.getElementById('alertTime').value = data.timeOfDay || '';
+                        document.getElementById('alertTimezone').value = data.timezone || 'America/Chicago'; // Populate field
                         timeGroup.style.display = 'block'; thresholdGroup.style.display = 'none';
                     } else {
                         document.getElementById('alertThreshold').value = data.thresholdMW || '';
