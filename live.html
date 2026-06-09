@@ -266,15 +266,51 @@
             feeder3: { datasets: [] }
         };
 
-        // NEW: Function to draw alert lines based on current dropdown view
+        // NEW: Function to draw alert lines and the Max Drop highlight based on current dropdown view
         function updateChartAnnotations() {
-            if (!duckChart) return;
+            // Ensure the chart and its data are fully loaded before trying to calculate
+            if (!duckChart || !duckChart.data.labels || duckChart.data.labels.length === 0) return;
+            
             const currentView = document.getElementById('feederToggle').value;
             const annotations = {};
-
+        
+            // --- 1. CALCULATE LARGEST 1H ABSOLUTE DECREASE ---
+            // dataset[0] always holds the primary data for the current view (Combined or specific Feeder)
+            const currentData = views[currentView].datasets[0].data;
+            let maxDrop = 0;
+            let dropIndex = -1;
+        
+            // Loop through the data to find the largest drop between consecutive hours
+            for (let i = 0; i < currentData.length - 1; i++) {
+                const drop = currentData[i] - currentData[i + 1];
+                if (drop > maxDrop) {
+                    maxDrop = drop;
+                    dropIndex = i;
+                }
+            }
+        
+            // If a drop exists, add a red highlight box spanning that 1-hour segment
+            if (dropIndex !== -1 && maxDrop > 0) {
+                annotations['max_drop_box'] = {
+                    type: 'box',
+                    xMin: duckChart.data.labels[dropIndex],
+                    xMax: duckChart.data.labels[dropIndex + 1],
+                    backgroundColor: 'rgba(229, 62, 62, 0.15)', // Transparent red
+                    borderWidth: 0,
+                    label: {
+                        display: true,
+                        content: `Max Drop (-${maxDrop.toFixed(2)})`,
+                        position: 'center',
+                        color: '#e53e3e',
+                        font: { size: 10, weight: 'bold' }
+                    }
+                };
+            }
+        
+            // --- 2. RENDER ACTIVE ALERTS ---
             // Filter alerts that match the current dropdown view
             const alertsForView = activeThresholdAlerts.filter(alert => alert.view === currentView);
-
+        
             alertsForView.forEach((alert, index) => {
                 annotations[`alert_${index}`] = {
                     type: 'line',
@@ -293,7 +329,7 @@
                     }
                 };
             });
-
+        
             duckChart.options.plugins.annotation.annotations = annotations;
             duckChart.update();
         }
@@ -340,6 +376,7 @@
                 duckChart.data.labels = labels;
                 duckChart.data.datasets = views[currentDropdownValue].datasets;
                 duckChart.update();
+                updateChartAnnotations();
             }
         });
 
