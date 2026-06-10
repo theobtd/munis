@@ -277,7 +277,7 @@
             feeder3: { datasets: [] }
         };
 
-        // NEW: Function to draw alert lines and the Max Drop highlight based on current dropdown view
+        // NEW: Function to draw alert lines and highlight the MISO Peak hour
         function updateChartAnnotations() {
             // Ensure the chart and its data are fully loaded before trying to calculate
             if (!duckChart || !duckChart.data.labels || duckChart.data.labels.length === 0) return;
@@ -285,32 +285,34 @@
             const currentView = document.getElementById('feederToggle').value;
             const annotations = {};
         
-            // --- 1. CALCULATE LARGEST 1H ABSOLUTE DECREASE ---
-            // dataset[0] always holds the primary data for the current view (Combined or specific Feeder)
-            const currentData = views[currentView].datasets[0].data;
-            let maxDrop = 0;
-            let dropIndex = -1;
+            // --- 1. CALCULATE MISO PEAK LOAD HOUR ---
+            // dataset[0] holds the MISO data because it is the first dataset in every view
+            const misoData = views[currentView].datasets[0].data;
+            let maxLoad = -1;
+            let peakIndex = -1;
         
-            // Loop through the data to find the largest drop between consecutive hours
-            for (let i = 0; i < currentData.length - 1; i++) {
-                const drop = currentData[i] - currentData[i + 1];
-                if (drop > maxDrop) {
-                    maxDrop = drop;
-                    dropIndex = i;
+            // Loop through the data to find the highest grid load
+            for (let i = 0; i < misoData.length; i++) {
+                if (misoData[i] > maxLoad) {
+                    maxLoad = misoData[i];
+                    peakIndex = i;
                 }
             }
         
-            // If a drop exists, add a red highlight box spanning that 1-hour segment
-            if (dropIndex !== -1 && maxDrop > 0) {
-                annotations['max_drop_box'] = {
+            // Add a red highlight box spanning the hour of the highest grid load
+            if (peakIndex !== -1 && maxLoad > 0) {
+                // Ensure the box doesn't break if the peak is on the very last hour of the array
+                const endLabelIndex = Math.min(peakIndex + 1, duckChart.data.labels.length - 1);
+                
+                annotations['miso_peak_box'] = {
                     type: 'box',
-                    xMin: duckChart.data.labels[dropIndex],
-                    xMax: duckChart.data.labels[dropIndex + 1],
+                    xMin: duckChart.data.labels[peakIndex],
+                    xMax: duckChart.data.labels[endLabelIndex],
                     backgroundColor: 'rgba(229, 62, 62, 0.15)', // Transparent red
                     borderWidth: 0,
                     label: {
                         display: true,
-                        content: `Max Drop (-${maxDrop.toFixed(2)})`,
+                        content: `Grid Peak (${maxLoad.toFixed(0)} MW)`,
                         position: 'center',
                         color: '#e53e3e',
                         font: { size: 10, weight: 'bold' }
