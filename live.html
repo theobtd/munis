@@ -248,8 +248,19 @@
                 },
                 scales: {
                     y: { 
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
                         title: { display: true, text: 'GHI (W/m²)' },
                         beginAtZero: true
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'MISO Load (MW)' },
+                        grid: { drawOnChartArea: false }, // Hides the grid lines so they don't clash with GHI
+                        beginAtZero: false // Grid load doesn't go to zero; keeping this false accentuates the peak curve
                     },
                     x: { 
                         title: { display: true, text: 'Time of Day' }, 
@@ -349,6 +360,7 @@
                 const ghiFeeder1 = [];
                 const ghiFeeder2 = [];
                 const ghiFeeder3 = [];
+                const misoLoad = [];
 
                 data.combined.forecasts.forEach((hourData, index) => {
                     const date = new Date(hourData.time);
@@ -359,18 +371,47 @@
                     ghiFeeder1.push(data.feeder1 && data.feeder1.forecasts[index] ? data.feeder1.forecasts[index].ghi : 0);
                     ghiFeeder2.push(data.feeder2 && data.feeder2.forecasts[index] ? data.feeder2.forecasts[index].ghi : 0);
                     ghiFeeder3.push(data.feeder3 && data.feeder3.forecasts[index] ? data.feeder3.forecasts[index].ghi : 0);
+                    
+                    // NEW: Extract MISO data. Fallback to 0 if the Worker hasn't written it yet.
+                    misoLoad.push(data.miso && data.miso.forecasts[index] ? data.miso.forecasts[index].load_mw : 0);
                 });
 
-                views.combined.datasets = [
-                    { label: 'Combined GHI', data: ghiCombined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, order: 1 },
-                    { label: 'Feeder 1', data: ghiFeeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 2 },
-                    { label: 'Feeder 2', data: ghiFeeder2, borderColor: '#38a169', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 3 },
-                    { label: 'Feeder 3', data: ghiFeeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, order: 4 }
-                ];
+                const misoDataset = { 
+                    label: 'MISO Grid Load', 
+                    data: misoLoad, 
+                    borderColor: '#805ad5', 
+                    borderDash: [5, 5], 
+                    fill: false, 
+                    tension: 0.4, 
+                    borderWidth: 2, 
+                    pointRadius: 0, 
+                    pointHitRadius: 10, 
+                    yAxisID: 'y1', // Explicitly tie this to the new right-side axis
+                    order: 0 // Draw it behind the solar lines
+                };
 
-                views.feeder1.datasets = [{ label: 'Feeder 1 GHI', data: ghiFeeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }];
-                views.feeder2.datasets = [{ label: 'Feeder 2 GHI', data: ghiFeeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }];
-                views.feeder3.datasets = [{ label: 'Feeder 3 GHI', data: ghiFeeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10 }];
+                views.combined.datasets = [
+                    misoDataset,
+                    { label: 'Combined GHI', data: ghiCombined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 1 },
+                    { label: 'Feeder 1', data: ghiFeeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 2 },
+                    { label: 'Feeder 2', data: ghiFeeder2, borderColor: '#38a169', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 3 },
+                    { label: 'Feeder 3', data: ghiFeeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 4 }
+                ];
+                
+                views.feeder1.datasets = [
+                    misoDataset,
+                    { label: 'Feeder 1 GHI', data: ghiFeeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
+                ];
+                
+                views.feeder2.datasets = [
+                    misoDataset,
+                    { label: 'Feeder 2 GHI', data: ghiFeeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
+                ];
+                
+                views.feeder3.datasets = [
+                    misoDataset,
+                    { label: 'Feeder 3 GHI', data: ghiFeeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
+                ];
 
                 const currentDropdownValue = document.getElementById('feederToggle').value;
                 duckChart.data.labels = labels;
