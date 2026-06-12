@@ -394,7 +394,7 @@
 
                 views.combined.datasets = [
                     misoDataset,
-                    { label: 'Combined GHI', data: ghiCombined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 1 },
+                    { label: 'Combined BTM solar', data: ghiCombined, borderColor: '#3182ce', backgroundColor: 'rgba(49, 130, 206, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 1 },
                     { label: 'Feeder 1', data: ghiFeeder1, borderColor: '#e53e3e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 2 },
                     { label: 'Feeder 2', data: ghiFeeder2, borderColor: '#38a169', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 3 },
                     { label: 'Feeder 3', data: ghiFeeder3, borderColor: '#d69e2e', fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0, pointHitRadius: 10, yAxisID: 'y', order: 4 }
@@ -402,17 +402,17 @@
                 
                 views.feeder1.datasets = [
                     misoDataset,
-                    { label: 'Feeder 1 GHI', data: ghiFeeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
+                    { label: 'Feeder 1 BTM solar', data: ghiFeeder1, borderColor: '#e53e3e', backgroundColor: 'rgba(229, 62, 62, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
                 ];
                 
                 views.feeder2.datasets = [
                     misoDataset,
-                    { label: 'Feeder 2 GHI', data: ghiFeeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
+                    { label: 'Feeder 2 BTM solar', data: ghiFeeder2, borderColor: '#38a169', backgroundColor: 'rgba(56, 161, 105, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
                 ];
                 
                 views.feeder3.datasets = [
                     misoDataset,
-                    { label: 'Feeder 3 GHI', data: ghiFeeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
+                    { label: 'Feeder 3 BTM solar', data: ghiFeeder3, borderColor: '#d69e2e', backgroundColor: 'rgba(214, 158, 46, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointHitRadius: 10, yAxisID: 'y' }
                 ];
 
                 const currentDropdownValue = document.getElementById('feederToggle').value;
