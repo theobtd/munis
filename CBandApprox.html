@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C-Line Approximation Leak Detection - League City, TX</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+        }
+
+        /* Map Container */
+        #map {
+            height: 100vh;
+            width: 100vw;
+            z-index: 1;
+        }
+
+        /* Header / Title */
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 15px 25px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            pointer-events: none; /* Let clicks pass through to map */
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #e2e8f0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .header p {
+            margin: 5px 0 0 0;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        /* Dropdown Control */
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        select {
+            background-color: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:hover, select:focus {
+            border-color: #38bdf8;
+        }
+
+        /* Custom tooltip styling for the GPS coordinates */
+        .custom-tooltip {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #38bdf8;
+            color: #f8fafc;
+            border-radius: 4px;
+            font-family: monospace;
+            padding: 6px 10px;
+        }
+        .leaflet-tooltip-left.custom-tooltip::before { border-left-color: #38bdf8; }
+        .leaflet-tooltip-right.custom-tooltip::before { border-right-color: #38bdf8; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>C-Line Approximation Leak Detection</h1>
+        <p>League City, TX | Satellite Pipeline Monitoring</p>
+    </div>
+
+    <div class="controls">
+        <select id="quarter-select">
+            </select>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // 1. Initialize Map centered on League City, TX
+        const map = L.map('map', {
+            zoomControl: false // We'll reposition it
+        }).setView([29.5075, -95.0949], 14);
+
+        // Move zoom control to bottom right
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // 2. Add Dark Mode Basemap (CartoDB Dark Matter)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // 3. Mock Pipeline Infrastructure (GeoJSON)
+        // These roughly follow some main arteries in League City (e.g., FM 518, Hwy 3, League City Pkwy)
+        const pipelineData = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"name": "FM-518 Main"},
+                    "geometry": {"type": "LineString", "coordinates": [[-95.130, 29.512], [-95.110, 29.510], [-95.080, 29.508], [-95.060, 29.515]]}
+                },
+                {
+                    "type": "Feature",
+                    "properties": {"name": "Hwy 3 Interconnector"},
+                    "geometry": {"type": "LineString", "coordinates": [[-95.094, 29.530], [-95.092, 29.505], [-95.090, 29.480]]}
+                },
+                {
+                    "type": "Feature",
+                    "properties": {"name": "League City Pkwy Distribution"},
+                    "geometry": {"type": "LineString", "coordinates": [[-95.140, 29.490], [-95.110, 29.492], [-95.080, 29.495], [-95.050, 29.490]]}
+                }
+            ]
+        };
+
+        // Render the pipelines in a distinct blue color
+        L.geoJSON(pipelineData, {
+            style: {
+                color: "#38bdf8",
+                weight: 3,
+                opacity: 0.6,
+                dashArray: '5, 5' // Dashed line to look like schematic network
+            }
+        }).addTo(map);
+
+        // 4. Mock Hotspot Data (Last 10 Quarters)
+        // Note: Some coordinates overlap/persist across consecutive quarters to simulate persistent leaks
+        const hotspotData = {
+            "Q2 2024": [ [29.5105, -95.1150], [29.4930, -95.0950] ],
+            "Q1 2024": [ [29.5105, -95.1150], [29.4930, -95.0950], [29.5200, -95.0930] ], // Persistent from Q2 + 1 old
+            "Q4 2023": [ [29.5200, -95.0930], [29.4910, -95.1200], [29.5085, -95.0750] ],
+            "Q3 2023": [ [29.4910, -95.1200], [29.5085, -95.0750] ],
+            "Q2 2023": [ [29.4910, -95.1200], [29.5000, -95.0910], [29.4940, -95.0650] ],
+            "Q1 2023": [ [29.5000, -95.0910], [29.4940, -95.0650] ],
+            "Q4 2022": [ [29.4940, -95.0650], [29.5110, -95.1250], [29.4850, -95.0890] ],
+            "Q3 2022": [ [29.5110, -95.1250], [29.4850, -95.0890] ],
+            "Q2 2022": [ [29.5110, -95.1250], [29.5250, -95.0935] ],
+            "Q1 2022": [ [29.5250, -95.0935], [29.4920, -95.1050], [29.5130, -95.0650] ]
+        };
+
+        // 5. Logic to render hotspots
+        let currentHotspotLayer = L.layerGroup().addTo(map);
+
+        function updateHotspots(quarter) {
+            // Clear existing points
+            currentHotspotLayer.clearLayers();
+            
+            const points = hotspotData[quarter];
+            if (!points) return;
+
+            points.forEach(coord => {
+                // Create a pulsing glowing effect using Leaflet CircleMarker
+                const marker = L.circleMarker(coord, {
+                    radius: 8,
+                    fillColor: "#ef4444", // Red
+                    color: "#fca5a5",     // Lighter red border
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+
+                // Add GPS Hover Tooltip
+                const gpsText = `Lat: ${coord[0].toFixed(5)}<br>Lng: ${coord[1].toFixed(5)}`;
+                marker.bindTooltip(gpsText, {
+                    className: 'custom-tooltip',
+                    direction: 'top',
+                    offset: [0, -10]
+                });
+
+                currentHotspotLayer.addLayer(marker);
+            });
+        }
+
+        // 6. Populate Dropdown and setup Event Listener
+        const selectElement = document.getElementById('quarter-select');
+        Object.keys(hotspotData).forEach(quarter => {
+            const option = document.createElement('option');
+            option.value = quarter;
+            option.textContent = quarter;
+            selectElement.appendChild(option);
+        });
+
+        // Initialize first view
+        const initialQuarter = Object.keys(hotspotData)[0];
+        updateHotspots(initialQuarter);
+
+        // Update on change
+        selectElement.addEventListener('change', (e) => {
+            updateHotspots(e.target.value);
+        });
+
+    </script>
+</body>
+</html>
