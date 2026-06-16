@@ -108,7 +108,7 @@
     <script>
         const map = L.map('map', {
             zoomControl: false 
-        }).setView([29.504, -95.096], 15); // Zoomed in a bit more to see the dense grid
+        });
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -118,45 +118,67 @@
             maxZoom: 20
         }).addTo(map);
 
-        // 3. Upgraded, Complex Pipeline Infrastructure (GeoJSON)
-        // Now includes "type" properties to differentiate main lines from street-level distribution
+        // 1. Define and draw the Area of Interest (AOI) Bounding Box
+        // Coordinates provided: West, South, East, North (approximate diamond shape)
+        const aoiCoordinates = [
+            [29.494267, -95.125236], // West corner
+            [29.462288, -95.084982], // South corner
+            [29.501663, -94.999237], // East corner
+            [29.539754, -95.046100]  // North corner
+        ];
+
+        const aoiPolygon = L.polygon(aoiCoordinates, {
+            color: '#475569',
+            weight: 2,
+            dashArray: '10, 10',
+            fillColor: '#1e293b',
+            fillOpacity: 0.1
+        }).addTo(map);
+
+        // Automatically frame the map to exactly fit the bounding box
+        map.fitBounds(aoiPolygon.getBounds(), { padding: [20, 20] });
+
+        // 2. High-Density Pipeline Infrastructure (GeoJSON) strictly inside the AOI
+        // Note: GeoJSON uses [Longitude, Latitude] formats
         const pipelineData = {
             "type": "FeatureCollection",
             "features": [
-                // TRANSMISSION MAINS (Heavy load)
-                {
-                    "type": "Feature",
-                    "properties": {"name": "Primary Arterial Main", "type": "transmission"},
-                    "geometry": {"type": "LineString", "coordinates": [[-95.120, 29.510], [-95.105, 29.508], [-95.090, 29.508], [-95.070, 29.512]]}
-                },
-                // DISTRIBUTION MAINS (Feeding subdivisions)
-                {
-                    "type": "Feature",
-                    "properties": {"name": "Subdivision Feeder North", "type": "distribution"},
-                    "geometry": {"type": "LineString", "coordinates": [[-95.105, 29.508], [-95.105, 29.518]]}
-                },
-                {
-                    "type": "Feature",
-                    "properties": {"name": "Subdivision Feeder South", "type": "distribution"},
-                    "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.508], [-95.090, 29.495]]}
-                },
-                // SERVICE LINES (Dense, residential street grids & loops)
-                // North Grid
-                { "type": "Feature", "properties": {"name": "Res Street 1", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.105, 29.512], [-95.095, 29.512]]} },
-                { "type": "Feature", "properties": {"name": "Res Street 2", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.105, 29.515], [-95.095, 29.515]]} },
-                { "type": "Feature", "properties": {"name": "Res Cross Street", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.095, 29.512], [-95.095, 29.518]]} },
-                { "type": "Feature", "properties": {"name": "Cul-de-sac N1", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.105, 29.518], [-95.100, 29.518], [-95.100, 29.520]]} },
+                // === TRANSMISSION MAINS ===
+                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.110, 29.490], [-95.085, 29.485], [-95.060, 29.495], [-95.030, 29.505], [-95.010, 29.500]]} },
+                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.050, 29.525], [-95.060, 29.495], [-95.070, 29.475]]} },
                 
-                // South Grid (Looped network for redundancy)
-                { "type": "Feature", "properties": {"name": "South Loop Top", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.503], [-95.080, 29.503]]} },
-                { "type": "Feature", "properties": {"name": "South Loop Bottom", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.498], [-95.080, 29.498]]} },
-                { "type": "Feature", "properties": {"name": "South Loop Right", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.503], [-95.080, 29.495]]} },
-                { "type": "Feature", "properties": {"name": "Res Street 3", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.503], [-95.085, 29.498]]} },
-                { "type": "Feature", "properties": {"name": "Cul-de-sac S1", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.495], [-95.075, 29.495]]} }
+                // === DISTRIBUTION MAINS ===
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.485], [-95.095, 29.475]]} },
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.495], [-95.075, 29.510]]} },
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.030, 29.505], [-95.035, 29.490]]} },
+                
+                // === SERVICE LINES (Neighborhood Clusters) ===
+                
+                // Cluster 1: South-West Grid
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.095, 29.475], [-95.090, 29.475], [-95.090, 29.470], [-95.095, 29.470], [-95.095, 29.475]]} }, // Loop
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.475], [-95.085, 29.478]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.470], [-95.085, 29.468]]} },
+                
+                // Cluster 2: North-West Grid
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.075, 29.510], [-95.085, 29.510], [-95.085, 29.505], [-95.075, 29.505]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.510], [-95.080, 29.515]]} }, // Cul-de-sac
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.505], [-95.090, 29.500]]} },
+                
+                // Cluster 3: Central Grid
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.495], [-95.050, 29.490], [-95.045, 29.495], [-95.055, 29.500]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.050, 29.490], [-95.050, 29.480]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.050, 29.485], [-95.040, 29.485]]} },
+                
+                // Cluster 4: Eastern Grid
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.035, 29.490], [-95.025, 29.490], [-95.025, 29.485], [-95.035, 29.485], [-95.035, 29.490]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.030, 29.490], [-95.030, 29.495]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.025, 29.485], [-95.020, 29.480]]} },
+
+                // Cluster 5: Far East Tail
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.010, 29.500], [-95.015, 29.495], [-95.010, 29.490]]} }
             ]
         };
 
-        // Function to dynamically style pipes based on their classification
         function getPipeStyle(feature) {
             switch (feature.properties.type) {
                 case 'transmission':
@@ -174,18 +196,19 @@
             style: getPipeStyle
         }).addTo(map);
 
-        // 4. Mock Hotspot Data (Recalibrated to snap to the new grid)
+        // 3. Hotspot Data mapped precisely to the new infrastructure
+        // Format: [Latitude, Longitude]
         const hotspotData = {
-            "Q2 2024": [ [29.508, -95.105], [29.503, -95.085] ],
-            "Q1 2024": [ [29.508, -95.105], [29.503, -95.085], [29.515, -95.095] ], 
-            "Q4 2023": [ [29.515, -95.095], [29.498, -95.080], [29.510, -95.115] ],
-            "Q3 2023": [ [29.498, -95.080], [29.510, -95.115] ],
-            "Q2 2023": [ [29.498, -95.080], [29.512, -95.100], [29.518, -95.102] ],
-            "Q1 2023": [ [29.512, -95.100], [29.518, -95.102] ],
-            "Q4 2022": [ [29.518, -95.102], [29.503, -95.090], [29.495, -95.078] ],
-            "Q3 2022": [ [29.503, -95.090], [29.495, -95.078] ],
-            "Q2 2022": [ [29.503, -95.090], [29.508, -95.080] ],
-            "Q1 2022": [ [29.508, -95.080], [29.498, -95.090], [29.512, -95.075] ]
+            "Q2 2024": [ [29.475, -95.090], [29.490, -95.035] ],
+            "Q1 2024": [ [29.475, -95.090], [29.490, -95.035], [29.510, -95.080] ], 
+            "Q4 2023": [ [29.510, -95.080], [29.485, -95.040], [29.495, -95.060] ],
+            "Q3 2023": [ [29.485, -95.040], [29.495, -95.060] ],
+            "Q2 2023": [ [29.485, -95.040], [29.490, -95.050], [29.475, -95.070] ],
+            "Q1 2023": [ [29.490, -95.050], [29.475, -95.070] ],
+            "Q4 2022": [ [29.475, -95.070], [29.500, -95.010], [29.485, -95.085] ],
+            "Q3 2022": [ [29.500, -95.010], [29.485, -95.085] ],
+            "Q2 2022": [ [29.500, -95.010], [29.475, -95.095] ],
+            "Q1 2022": [ [29.475, -95.095], [29.485, -95.085], [29.490, -95.035] ]
         };
 
         let currentHotspotLayer = L.layerGroup().addTo(map);
