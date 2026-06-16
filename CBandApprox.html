@@ -126,7 +126,7 @@
             [29.539754, -95.046100]  // North
         ];
 
-        // Notice .addTo(map) has been removed so the perimeter outline is invisible
+        // The .addTo(map) method has been removed so the perimeter outline remains invisible to users
         const aoiPolygon = L.polygon(aoiCoordinates, {
             color: '#475569',
             weight: 2,
@@ -135,83 +135,79 @@
             fillOpacity: 0.1
         });
 
-        // The map still utilizes the polygon above to zoom to the proper bounds
         map.fitBounds(aoiPolygon.getBounds(), { padding: [20, 20] });
 
-        // 2. High-Density Pipeline Infrastructure (GeoJSON) - Doubled Density
+        // 2. High-Density Pipeline Infrastructure (GeoJSON) - Tripled Density + Fully Interconnected
         const pipelineData = {
             "type": "FeatureCollection",
             "features": [
                 // === TRANSMISSION MAINS ===
                 { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.110, 29.490], [-95.085, 29.485], [-95.060, 29.495], [-95.030, 29.505], [-95.010, 29.500]]} },
                 { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.050, 29.525], [-95.060, 29.495], [-95.070, 29.475]]} },
-                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.510], [-95.070, 29.510], [-95.050, 29.505], [-95.030, 29.490]]} },
-                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.470], [-95.060, 29.480], [-95.040, 29.480], [-95.020, 29.490]]} },
-
-                // === ADDITIONAL TRANSMISSION MAINS ===
-                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.120, 29.510], [-95.090, 29.495], [-95.060, 29.515]]} },
-                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.020, 29.520], [-95.040, 29.495], [-95.010, 29.480]]} },
-                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.070, 29.465], [-95.050, 29.485], [-95.030, 29.465]]} },
+                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.510], [-95.070, 29.510], [-95.050, 29.505], [-95.030, 29.490]]} }, 
+                { "type": "Feature", "properties": {"type": "transmission"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.470], [-95.060, 29.480], [-95.040, 29.480], [-95.020, 29.490]]} }, 
                 
                 // === DISTRIBUTION MAINS ===
                 { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.485], [-95.095, 29.475]]} },
                 { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.495], [-95.075, 29.510]]} },
                 { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.030, 29.505], [-95.035, 29.490]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.070, 29.510], [-95.060, 29.525]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.040, 29.480], [-95.030, 29.470]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.050, 29.505], [-95.040, 29.515]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.100, 29.495], [-95.090, 29.510]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.020, 29.490], [-95.010, 29.485]]} },
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.070, 29.510], [-95.060, 29.525]]} }, 
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.040, 29.480], [-95.030, 29.470]]} }, 
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.050, 29.505], [-95.040, 29.515]]} }, 
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.100, 29.495], [-95.090, 29.510]]} }, 
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.020, 29.490], [-95.010, 29.485]]} }, 
 
-                // === ADDITIONAL DISTRIBUTION MAINS ===
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.110, 29.505], [-95.100, 29.515]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.490], [-95.090, 29.480]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.040, 29.520], [-95.050, 29.510]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.020, 29.505], [-95.010, 29.515]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.475], [-95.050, 29.465]]} },
-                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.115, 29.490], [-95.105, 29.480]]} },
+                // === INTERCONNECTING MAINS (Tying disconnected loops to the grid) ===
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.095, 29.475], [-95.080, 29.470]]} }, // Connects SW Grid (Cluster 1) to Southern Bypass
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.510], [-95.070, 29.510]]} }, // Connects NW Grid (Cluster 2) to Cross-City Line
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.055, 29.515], [-95.050, 29.525]]} }, // Connects Deep North (Cluster 6) to N-S Main
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.100, 29.495], [-95.110, 29.490]]} }, // Connects Mid-West (Cluster 7) to Transmission Start
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.070, 29.480], [-95.070, 29.475]]} }, // Connects South-Central (Cluster 8) to N-S Main End
+                { "type": "Feature", "properties": {"type": "distribution"}, "geometry": {"type": "LineString", "coordinates": [[-95.015, 29.495], [-95.020, 29.490]]} }, // Connects Far East (Cluster 5) to Southern Bypass End
                 
                 // === SERVICE LINES ===
                 
-                // Cluster 1: South-West Grid
+                // Cluster 1: South-West Grid (Expanded)
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.095, 29.475], [-95.090, 29.475], [-95.090, 29.470], [-95.095, 29.470], [-95.095, 29.475]]} },
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.475], [-95.085, 29.478]]} },
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.470], [-95.085, 29.468]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.095, 29.470], [-95.100, 29.470], [-95.100, 29.475]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.092, 29.475], [-95.092, 29.480]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.088, 29.475], [-95.088, 29.480]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.095, 29.470], [-95.100, 29.470], [-95.100, 29.475]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.092, 29.475], [-95.092, 29.480]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.088, 29.475], [-95.088, 29.480]]} }, 
                 
-                // Cluster 2: North-West Grid
+                // Cluster 2: North-West Grid (Expanded)
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.075, 29.510], [-95.085, 29.510], [-95.085, 29.505], [-95.075, 29.505]]} },
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.510], [-95.080, 29.515]]} }, 
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.505], [-95.090, 29.500]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.505], [-95.080, 29.500]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.510], [-95.090, 29.515]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.075, 29.510], [-95.070, 29.515]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.082, 29.510], [-95.082, 29.505]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.505], [-95.080, 29.500]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.510], [-95.090, 29.515]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.075, 29.510], [-95.070, 29.515]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.082, 29.510], [-95.082, 29.505]]} }, 
                 
-                // Cluster 3: Central Grid
+                // Cluster 3: Central Grid (Expanded)
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.495], [-95.050, 29.490], [-95.045, 29.495], [-95.055, 29.500]]} },
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.050, 29.490], [-95.050, 29.480]]} },
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.050, 29.485], [-95.040, 29.485]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.055, 29.490], [-95.060, 29.485]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.045, 29.490], [-95.045, 29.480]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.055, 29.495], [-95.050, 29.495]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.500], [-95.055, 29.505]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.055, 29.490], [-95.060, 29.485]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.045, 29.490], [-95.045, 29.480]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.055, 29.495], [-95.050, 29.495]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.500], [-95.055, 29.505]]} }, 
                 
-                // Cluster 4: Eastern Grid
+                // Cluster 4: Eastern Grid (Expanded)
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.035, 29.490], [-95.025, 29.490], [-95.025, 29.485], [-95.035, 29.485], [-95.035, 29.490]]} },
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.030, 29.490], [-95.030, 29.495]]} },
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.025, 29.485], [-95.020, 29.480]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.035, 29.485], [-95.035, 29.480]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.030, 29.485], [-95.030, 29.480]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.025, 29.490], [-95.020, 29.495]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.032, 29.490], [-95.032, 29.485]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.035, 29.485], [-95.035, 29.480]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.030, 29.485], [-95.030, 29.480]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.025, 29.490], [-95.020, 29.495]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.032, 29.490], [-95.032, 29.485]]} }, 
                 
-                // Cluster 5: Far East Tail
+                // Cluster 5: Far East Tail (Expanded)
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.010, 29.500], [-95.015, 29.495], [-95.010, 29.490]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.015, 29.495], [-95.020, 29.500]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.010, 29.495], [-95.005, 29.495]]} },
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.015, 29.495], [-95.020, 29.500]]} }, 
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.010, 29.495], [-95.005, 29.495]]} }, 
+                
+                // === NEW CLUSTERS ===
                 
                 // Cluster 6: Deep North Grid
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.525], [-95.050, 29.520], [-95.050, 29.515], [-95.060, 29.515], [-95.060, 29.525]]} },
@@ -232,29 +228,7 @@
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.065, 29.485], [-95.065, 29.480]]} }, 
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.070, 29.480], [-95.075, 29.475]]} }, 
                 { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.060, 29.485], [-95.055, 29.490]]} }, 
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.065, 29.475], [-95.065, 29.470]]} },
-
-                // === ADDITIONAL SERVICE LINES ===
-                
-                // Deep South Grid
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.465], [-95.070, 29.465], [-95.070, 29.460], [-95.080, 29.460], [-95.080, 29.465]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.075, 29.465], [-95.075, 29.460]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.462], [-95.070, 29.462]]} },
-                
-                // North East Subdivisions
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.020, 29.520], [-95.010, 29.520], [-95.010, 29.510], [-95.020, 29.510], [-95.020, 29.520]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.015, 29.520], [-95.015, 29.510]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.020, 29.515], [-95.010, 29.515]]} },
-
-                // Expanded West Subdivisions
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.115, 29.500], [-95.105, 29.500], [-95.105, 29.495], [-95.115, 29.495], [-95.115, 29.500]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.110, 29.500], [-95.110, 29.495]]} },
-
-                // Additional Grids and Fillers Across the Map
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.045, 29.530], [-95.035, 29.530], [-95.035, 29.525], [-95.045, 29.525], [-95.045, 29.530]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.040, 29.530], [-95.040, 29.525]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.525], [-95.080, 29.525], [-95.080, 29.520], [-95.090, 29.520], [-95.090, 29.525]]} },
-                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.525], [-95.085, 29.520]]} }
+                { "type": "Feature", "properties": {"type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.065, 29.475], [-95.065, 29.470]]} }
             ]
         };
 
