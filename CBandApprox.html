@@ -16,14 +16,12 @@
             background-color: #121212;
         }
 
-        /* Map Container */
         #map {
             height: 100vh;
             width: 100vw;
             z-index: 1;
         }
 
-        /* Header / Title */
         .header {
             position: absolute;
             top: 20px;
@@ -35,7 +33,7 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(5px);
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            pointer-events: none; /* Let clicks pass through to map */
+            pointer-events: none; 
         }
 
         .header h1 {
@@ -52,7 +50,6 @@
             font-size: 0.85rem;
         }
 
-        /* Dropdown Control */
         .controls {
             position: absolute;
             top: 20px;
@@ -81,7 +78,6 @@
             border-color: #38bdf8;
         }
 
-        /* Custom tooltip styling for the GPS coordinates */
         .custom-tooltip {
             background: rgba(15, 23, 42, 0.9);
             border: 1px solid #38bdf8;
@@ -102,8 +98,7 @@
     </div>
 
     <div class="controls">
-        <select id="quarter-select">
-            </select>
+        <select id="quarter-select"></select>
     </div>
 
     <div id="map"></div>
@@ -111,91 +106,105 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // 1. Initialize Map centered on League City, TX
         const map = L.map('map', {
-            zoomControl: false // We'll reposition it
-        }).setView([29.5075, -95.0949], 14);
+            zoomControl: false 
+        }).setView([29.504, -95.096], 15); // Zoomed in a bit more to see the dense grid
 
-        // Move zoom control to bottom right
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // 2. Add Dark Mode Basemap (CartoDB Dark Matter)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
             maxZoom: 20
         }).addTo(map);
 
-        // 3. Mock Pipeline Infrastructure (GeoJSON)
-        // These roughly follow some main arteries in League City (e.g., FM 518, Hwy 3, League City Pkwy)
+        // 3. Upgraded, Complex Pipeline Infrastructure (GeoJSON)
+        // Now includes "type" properties to differentiate main lines from street-level distribution
         const pipelineData = {
             "type": "FeatureCollection",
             "features": [
+                // TRANSMISSION MAINS (Heavy load)
                 {
                     "type": "Feature",
-                    "properties": {"name": "FM-518 Main"},
-                    "geometry": {"type": "LineString", "coordinates": [[-95.130, 29.512], [-95.110, 29.510], [-95.080, 29.508], [-95.060, 29.515]]}
+                    "properties": {"name": "Primary Arterial Main", "type": "transmission"},
+                    "geometry": {"type": "LineString", "coordinates": [[-95.120, 29.510], [-95.105, 29.508], [-95.090, 29.508], [-95.070, 29.512]]}
+                },
+                // DISTRIBUTION MAINS (Feeding subdivisions)
+                {
+                    "type": "Feature",
+                    "properties": {"name": "Subdivision Feeder North", "type": "distribution"},
+                    "geometry": {"type": "LineString", "coordinates": [[-95.105, 29.508], [-95.105, 29.518]]}
                 },
                 {
                     "type": "Feature",
-                    "properties": {"name": "Hwy 3 Interconnector"},
-                    "geometry": {"type": "LineString", "coordinates": [[-95.094, 29.530], [-95.092, 29.505], [-95.090, 29.480]]}
+                    "properties": {"name": "Subdivision Feeder South", "type": "distribution"},
+                    "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.508], [-95.090, 29.495]]}
                 },
-                {
-                    "type": "Feature",
-                    "properties": {"name": "League City Pkwy Distribution"},
-                    "geometry": {"type": "LineString", "coordinates": [[-95.140, 29.490], [-95.110, 29.492], [-95.080, 29.495], [-95.050, 29.490]]}
-                }
+                // SERVICE LINES (Dense, residential street grids & loops)
+                // North Grid
+                { "type": "Feature", "properties": {"name": "Res Street 1", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.105, 29.512], [-95.095, 29.512]]} },
+                { "type": "Feature", "properties": {"name": "Res Street 2", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.105, 29.515], [-95.095, 29.515]]} },
+                { "type": "Feature", "properties": {"name": "Res Cross Street", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.095, 29.512], [-95.095, 29.518]]} },
+                { "type": "Feature", "properties": {"name": "Cul-de-sac N1", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.105, 29.518], [-95.100, 29.518], [-95.100, 29.520]]} },
+                
+                // South Grid (Looped network for redundancy)
+                { "type": "Feature", "properties": {"name": "South Loop Top", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.503], [-95.080, 29.503]]} },
+                { "type": "Feature", "properties": {"name": "South Loop Bottom", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.090, 29.498], [-95.080, 29.498]]} },
+                { "type": "Feature", "properties": {"name": "South Loop Right", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.503], [-95.080, 29.495]]} },
+                { "type": "Feature", "properties": {"name": "Res Street 3", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.085, 29.503], [-95.085, 29.498]]} },
+                { "type": "Feature", "properties": {"name": "Cul-de-sac S1", "type": "service"}, "geometry": {"type": "LineString", "coordinates": [[-95.080, 29.495], [-95.075, 29.495]]} }
             ]
         };
 
-        // Render the pipelines in a distinct blue color
-        L.geoJSON(pipelineData, {
-            style: {
-                color: "#38bdf8",
-                weight: 3,
-                opacity: 0.6,
-                dashArray: '5, 5' // Dashed line to look like schematic network
+        // Function to dynamically style pipes based on their classification
+        function getPipeStyle(feature) {
+            switch (feature.properties.type) {
+                case 'transmission':
+                    return { color: "#0ea5e9", weight: 5, opacity: 0.9, dashArray: '8, 6' };
+                case 'distribution':
+                    return { color: "#38bdf8", weight: 3, opacity: 0.7, dashArray: '5, 5' };
+                case 'service':
+                    return { color: "#7dd3fc", weight: 1.5, opacity: 0.5 };
+                default:
+                    return { color: "#38bdf8", weight: 2, opacity: 0.6 };
             }
+        }
+
+        L.geoJSON(pipelineData, {
+            style: getPipeStyle
         }).addTo(map);
 
-        // 4. Mock Hotspot Data (Last 10 Quarters)
-        // Note: Some coordinates overlap/persist across consecutive quarters to simulate persistent leaks
+        // 4. Mock Hotspot Data (Recalibrated to snap to the new grid)
         const hotspotData = {
-            "Q2 2024": [ [29.5105, -95.1150], [29.4930, -95.0950] ],
-            "Q1 2024": [ [29.5105, -95.1150], [29.4930, -95.0950], [29.5200, -95.0930] ], // Persistent from Q2 + 1 old
-            "Q4 2023": [ [29.5200, -95.0930], [29.4910, -95.1200], [29.5085, -95.0750] ],
-            "Q3 2023": [ [29.4910, -95.1200], [29.5085, -95.0750] ],
-            "Q2 2023": [ [29.4910, -95.1200], [29.5000, -95.0910], [29.4940, -95.0650] ],
-            "Q1 2023": [ [29.5000, -95.0910], [29.4940, -95.0650] ],
-            "Q4 2022": [ [29.4940, -95.0650], [29.5110, -95.1250], [29.4850, -95.0890] ],
-            "Q3 2022": [ [29.5110, -95.1250], [29.4850, -95.0890] ],
-            "Q2 2022": [ [29.5110, -95.1250], [29.5250, -95.0935] ],
-            "Q1 2022": [ [29.5250, -95.0935], [29.4920, -95.1050], [29.5130, -95.0650] ]
+            "Q2 2024": [ [29.508, -95.105], [29.503, -95.085] ],
+            "Q1 2024": [ [29.508, -95.105], [29.503, -95.085], [29.515, -95.095] ], 
+            "Q4 2023": [ [29.515, -95.095], [29.498, -95.080], [29.510, -95.115] ],
+            "Q3 2023": [ [29.498, -95.080], [29.510, -95.115] ],
+            "Q2 2023": [ [29.498, -95.080], [29.512, -95.100], [29.518, -95.102] ],
+            "Q1 2023": [ [29.512, -95.100], [29.518, -95.102] ],
+            "Q4 2022": [ [29.518, -95.102], [29.503, -95.090], [29.495, -95.078] ],
+            "Q3 2022": [ [29.503, -95.090], [29.495, -95.078] ],
+            "Q2 2022": [ [29.503, -95.090], [29.508, -95.080] ],
+            "Q1 2022": [ [29.508, -95.080], [29.498, -95.090], [29.512, -95.075] ]
         };
 
-        // 5. Logic to render hotspots
         let currentHotspotLayer = L.layerGroup().addTo(map);
 
         function updateHotspots(quarter) {
-            // Clear existing points
             currentHotspotLayer.clearLayers();
-            
             const points = hotspotData[quarter];
             if (!points) return;
 
             points.forEach(coord => {
-                // Create a pulsing glowing effect using Leaflet CircleMarker
                 const marker = L.circleMarker(coord, {
                     radius: 8,
-                    fillColor: "#ef4444", // Red
-                    color: "#fca5a5",     // Lighter red border
+                    fillColor: "#ef4444",
+                    color: "#fca5a5",
                     weight: 2,
                     opacity: 1,
                     fillOpacity: 0.8
                 });
 
-                // Add GPS Hover Tooltip
                 const gpsText = `Lat: ${coord[0].toFixed(5)}<br>Lng: ${coord[1].toFixed(5)}`;
                 marker.bindTooltip(gpsText, {
                     className: 'custom-tooltip',
@@ -207,7 +216,6 @@
             });
         }
 
-        // 6. Populate Dropdown and setup Event Listener
         const selectElement = document.getElementById('quarter-select');
         Object.keys(hotspotData).forEach(quarter => {
             const option = document.createElement('option');
@@ -216,11 +224,9 @@
             selectElement.appendChild(option);
         });
 
-        // Initialize first view
         const initialQuarter = Object.keys(hotspotData)[0];
         updateHotspots(initialQuarter);
 
-        // Update on change
         selectElement.addEventListener('change', (e) => {
             updateHotspots(e.target.value);
         });
