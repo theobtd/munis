@@ -277,7 +277,7 @@
             feeder3: { datasets: [] }
         };
 
-        // NEW: Function to draw alert lines and highlight the MISO Peak hour
+        // NEW: Function to draw alert lines, highlight the MISO Peak hour, and update tooltips
         function updateChartAnnotations() {
             // Ensure the chart and its data are fully loaded before trying to calculate
             if (!duckChart || !duckChart.data.labels || duckChart.data.labels.length === 0) return;
@@ -304,22 +304,15 @@
                 // Ensure the box doesn't break if the peak is on the very last hour of the array
                 const endLabelIndex = Math.min(peakIndex + 1, duckChart.data.labels.length - 1);
                 
-                // --- NEW CALCULATIONS: Solar Drop ---
-                // Dataset index 1 in the 'combined' view is always the Combined BTM Solar
+                // Calculate the Solar Drop
                 const combinedSolarData = views['combined'].datasets[1].data;
                 const solarAtPeakStart = combinedSolarData[peakIndex] || 0;
                 const solarAtPeakEnd = combinedSolarData[endLabelIndex] || 0;
                 
-                // Calculate the difference
                 const solarDrop = (solarAtPeakStart - solarAtPeakEnd).toFixed(2);
                 const dropText = solarDrop > 0 ? `-${solarDrop} kW` : `+${Math.abs(solarDrop)} kW`;
         
-                const defaultLabel = `Grid Peak (${maxLoad.toFixed(0)} MW)`;
-                const hoverLabel = [
-                    `Grid Peak (${maxLoad.toFixed(0)} MW)`,
-                    `Combined Solar Drop: ${dropText}`
-                ];
-        
+                // Create the static red box annotation
                 annotations['miso_peak_box'] = {
                     type: 'box',
                     xMin: duckChart.data.labels[peakIndex],
@@ -328,23 +321,31 @@
                     borderWidth: 0,
                     label: {
                         display: true,
-                        content: defaultLabel,
+                        content: `Grid Peak (${maxLoad.toFixed(0)} MW)`,
                         position: 'center',
                         color: '#e53e3e',
                         font: { size: 10, weight: 'bold' }
-                    },
-                    // --- NEW HOVER EVENTS ---
-                    enter(ctx) {
-                        ctx.element.options.label.content = hoverLabel;
-                        ctx.element.options.backgroundColor = 'rgba(229, 62, 62, 0.25)'; // Darkens slightly on hover
-                        ctx.chart.render(); // Instantly visually updates the chart without triggering a full re-animation
-                    },
-                    leave(ctx) {
-                        ctx.element.options.label.content = defaultLabel;
-                        ctx.element.options.backgroundColor = 'rgba(229, 62, 62, 0.15)'; // Reverts background
-                        ctx.chart.render();
                     }
                 };
+        
+                // --- NEW: DYNAMIC TOOLTIP INJECTION ---
+                // Modify the standard Chart.js tooltip to add a footer ONLY during the peak window
+                duckChart.options.plugins.tooltip.callbacks.footer = function(tooltipItems) {
+                    if (!tooltipItems.length) return null;
+                    
+                    const hoveredIndex = tooltipItems[0].dataIndex;
+                    
+                    // Check if the cursor is currently over the peak window
+                    if (hoveredIndex >= peakIndex && hoveredIndex <= endLabelIndex) {
+                        // The \n adds a little spacing above the footer text
+                        return `\nCombined Solar Drop: ${dropText}`; 
+                    }
+                    return null; // Return nothing if outside the window
+                };
+        
+            } else {
+                // Clear the tooltip footer if there is no peak data found
+                duckChart.options.plugins.tooltip.callbacks.footer = function() { return null; };
             }
         
             // --- 2. RENDER ACTIVE ALERTS ---
