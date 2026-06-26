@@ -310,8 +310,14 @@
                 const solarAtPeakStart = combinedSolarData[peakIndex] || 0;
                 const solarAtPeakEnd = combinedSolarData[endLabelIndex] || 0;
                 
-                const solarDrop = (solarAtPeakStart - solarAtPeakEnd).toFixed(2);
-                const dropText = solarDrop > 0 ? `-${solarDrop} kW` : `+${Math.abs(solarDrop)} kW`;
+                // Calculate the raw difference
+                const solarDropRaw = solarAtPeakStart - solarAtPeakEnd;
+                
+                // Normalize the value to always be a positive absolute number
+                const absDrop = Math.abs(solarDropRaw).toFixed(2);
+                
+                // Make the text highly descriptive without using double-negatives
+                const dropText = solarDropRaw > 0 ? `${absDrop} kW (Drop)` : `${absDrop} kW (Increase)`;
         
                 // Create the static red box annotation
                 annotations['miso_peak_box'] = {
@@ -339,7 +345,7 @@
                     // Check if the cursor is currently over the peak window
                     if (hoveredIndex >= peakIndex && hoveredIndex <= endLabelIndex) {
                         // The \n adds a little spacing above the footer text
-                        return `\nCombined Solar Drop: ${dropText}`; 
+                        return `\nCombined Solar Change: ${dropText}`; 
                     }
                     return null; // Return nothing if outside the window
                 };
