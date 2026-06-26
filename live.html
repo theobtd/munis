@@ -166,7 +166,13 @@
                 <select id="alertType" style="width: 100%;">
                     <option value="daily_set_time">Daily set time</option>
                     <option value="trigger">Trigger</option>
+                    <option value="PeakDrop">Peak-time Solar Drop</option>
                 </select>
+            </div>
+            
+            <div class="form-group" id="thresholdGroup" style="display: none;">
+                <label id="thresholdLabel">Above MW threshold:</label>
+                <input type="number" id="alertThreshold" step="0.1" placeholder="e.g. 5.5">
             </div>
             
             <div class="form-group" id="timeGroup">
@@ -182,11 +188,6 @@
                     <option value="America/Anchorage">Alaska Time (AKT)</option>
                     <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
                 </select>
-            </div>
-            
-            <div class="form-group" id="thresholdGroup" style="display: none;">
-                <label>Above MW threshold:</label>
-                <input type="number" id="alertThreshold" step="0.1" placeholder="e.g. 5.5">
             </div>
             
             <div class="form-group">
@@ -474,13 +475,15 @@
             document.getElementById('alertFeeder').value = 'global';
             document.getElementById('alertType').value = 'daily_set_time';
             document.getElementById('alertTime').value = '';
-            document.getElementById('alertTimezone').value = 'America/Chicago'; // Default to Central
+            document.getElementById('alertTimezone').value = 'America/Chicago';
             document.getElementById('alertThreshold').value = '';
             document.getElementById('alertEmails').value = '';
             document.getElementById('alertPhones').value = ''; 
             
             timeGroup.style.display = 'block';
             thresholdGroup.style.display = 'none';
+            // Reset the label back to default
+            document.getElementById('thresholdLabel').innerText = "Above MW threshold:"; 
         }
 
         openModalBtn.onclick = () => { resetModalForm(); modal.style.display = "flex"; }
@@ -488,10 +491,19 @@
         window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; }
 
         alertTypeSelect.addEventListener('change', function() {
+            const thresholdLabel = document.getElementById('thresholdLabel');
+            
             if (this.value === 'daily_set_time') {
-                timeGroup.style.display = 'block'; thresholdGroup.style.display = 'none';
-            } else {
-                timeGroup.style.display = 'none'; thresholdGroup.style.display = 'block';
+                timeGroup.style.display = 'block'; 
+                thresholdGroup.style.display = 'none';
+            } else if (this.value === 'trigger') {
+                timeGroup.style.display = 'none'; 
+                thresholdGroup.style.display = 'block';
+                thresholdLabel.innerText = "Above MW threshold:";
+            } else if (this.value === 'PeakDrop') {
+                timeGroup.style.display = 'none'; 
+                thresholdGroup.style.display = 'block';
+                thresholdLabel.innerText = "Above MW Solar Drop During Peak Window:";
             }
         });
 
@@ -575,7 +587,16 @@
                 
                 // Dynamic string to append time zones to daily triggers
                 const tzAbbr = tzLabels[data.timezone] || 'CT';
-                let conditionText = data.type === 'daily_set_time' ? `Triggers daily at ${data.timeOfDay} (${tzAbbr})` : `Triggers when load exceeds ${data.thresholdMW}`;
+                let conditionText = '';
+                
+                if (data.type === 'daily_set_time') {
+                    conditionText = `Triggers daily at ${data.timeOfDay} (${tzAbbr})`;
+                } else if (data.type === 'trigger') {
+                    conditionText = `Triggers when load exceeds ${data.thresholdMW}`;
+                } else if (data.type === 'PeakDrop') {
+                    conditionText = `Triggers when peak-time solar drop exceeds ${data.thresholdMW}`;
+                }
+                
                 let phonesText = data.phones && data.phones.length > 0 ? data.phones.join(', ') : 'None';
                 
                 const row = document.createElement('div');
@@ -612,11 +633,21 @@
                     
                     if (data.type === 'daily_set_time') {
                         document.getElementById('alertTime').value = data.timeOfDay || '';
-                        document.getElementById('alertTimezone').value = data.timezone || 'America/Chicago'; // Populate field
-                        timeGroup.style.display = 'block'; thresholdGroup.style.display = 'none';
+                        document.getElementById('alertTimezone').value = data.timezone || 'America/Chicago';
+                        timeGroup.style.display = 'block'; 
+                        thresholdGroup.style.display = 'none';
                     } else {
                         document.getElementById('alertThreshold').value = data.thresholdMW || '';
-                        timeGroup.style.display = 'none'; thresholdGroup.style.display = 'block';
+                        timeGroup.style.display = 'none'; 
+                        thresholdGroup.style.display = 'block';
+                        
+                        // Set the correct label dynamically on edit
+                        const thresholdLabel = document.getElementById('thresholdLabel');
+                        if (data.type === 'PeakDrop') {
+                            thresholdLabel.innerText = "Above MW Solar Drop During Peak Window:";
+                        } else {
+                            thresholdLabel.innerText = "Above MW threshold:";
+                        }
                     }
                     
                     document.getElementById('alertEmails').value = data.emails ? data.emails.join(', ') : '';
