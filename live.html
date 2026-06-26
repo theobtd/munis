@@ -304,6 +304,22 @@
                 // Ensure the box doesn't break if the peak is on the very last hour of the array
                 const endLabelIndex = Math.min(peakIndex + 1, duckChart.data.labels.length - 1);
                 
+                // --- NEW CALCULATIONS: Solar Drop ---
+                // Dataset index 1 in the 'combined' view is always the Combined BTM Solar
+                const combinedSolarData = views['combined'].datasets[1].data;
+                const solarAtPeakStart = combinedSolarData[peakIndex] || 0;
+                const solarAtPeakEnd = combinedSolarData[endLabelIndex] || 0;
+                
+                // Calculate the difference
+                const solarDrop = (solarAtPeakStart - solarAtPeakEnd).toFixed(2);
+                const dropText = solarDrop > 0 ? `-${solarDrop} kW` : `+${Math.abs(solarDrop)} kW`;
+        
+                const defaultLabel = `Grid Peak (${maxLoad.toFixed(0)} MW)`;
+                const hoverLabel = [
+                    `Grid Peak (${maxLoad.toFixed(0)} MW)`,
+                    `Combined Solar Drop: ${dropText}`
+                ];
+        
                 annotations['miso_peak_box'] = {
                     type: 'box',
                     xMin: duckChart.data.labels[peakIndex],
@@ -312,10 +328,21 @@
                     borderWidth: 0,
                     label: {
                         display: true,
-                        content: `Grid Peak (${maxLoad.toFixed(0)} MW)`,
+                        content: defaultLabel,
                         position: 'center',
                         color: '#e53e3e',
                         font: { size: 10, weight: 'bold' }
+                    },
+                    // --- NEW HOVER EVENTS ---
+                    enter(ctx) {
+                        ctx.element.options.label.content = hoverLabel;
+                        ctx.element.options.backgroundColor = 'rgba(229, 62, 62, 0.25)'; // Darkens slightly on hover
+                        ctx.chart.render(); // Instantly visually updates the chart without triggering a full re-animation
+                    },
+                    leave(ctx) {
+                        ctx.element.options.label.content = defaultLabel;
+                        ctx.element.options.backgroundColor = 'rgba(229, 62, 62, 0.15)'; // Reverts background
+                        ctx.chart.render();
                     }
                 };
             }
